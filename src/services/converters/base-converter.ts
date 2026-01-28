@@ -8,6 +8,8 @@ export interface BlogData {
   keyword: string;
   blogType: BlogType;
   canonicalUrl?: string;
+  focusKeyword?: string;
+  secondaryKeywords?: string[];
   tags?: string[];
   images?: {
     url: string;
@@ -20,6 +22,8 @@ export interface ConvertedContent {
   content: string;
   metadata: Record<string, unknown>;
   platform: Platform;
+  html?: string;
+  extra?: Record<string, unknown>;
 }
 
 export abstract class BasePlatformConverter {
