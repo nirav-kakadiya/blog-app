@@ -34,20 +34,43 @@ const BLOG_TYPE_ICONS: Record<string, string> = {
 export default function DashboardPage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'draft' | 'review' | 'published'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetch('/api/blogs')
-      .then((res) => res.json())
-      .then((data) => setBlogs(data.data || []))
-      .finally(() => setLoading(false));
+    const fetchBlogs = async () => {
+      try {
+        const res = await fetch('/api/blogs');
+        if (!res.ok) {
+          throw new Error(`Failed to fetch blogs: ${res.status}`);
+        }
+        const data = await res.json();
+        const blogList = data?.data;
+        setBlogs(Array.isArray(blogList) ? blogList : []);
+      } catch (err) {
+        console.error('Failed to fetch blogs:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load blogs');
+        setBlogs([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBlogs();
   }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this blog?')) return;
-    await fetch(`/api/blogs/${id}`, { method: 'DELETE' });
-    setBlogs(blogs.filter((b) => b.id !== id));
+    try {
+      const res = await fetch(`/api/blogs/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error('Failed to delete blog');
+      }
+      setBlogs((prev) => prev.filter((b) => b.id !== id));
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Failed to delete blog. Please try again.');
+    }
   };
 
   const filteredBlogs = blogs.filter((blog) => {

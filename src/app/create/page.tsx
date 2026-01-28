@@ -79,10 +79,13 @@ export default function CreateBlogPage() {
       if (!res.ok) throw new Error('Failed to generate content');
       const result = await res.json();
 
+      // Safely extract content with fallbacks
+      const content = result?.data?.blog?.content?.markdown ?? result?.data?.content?.markdown ?? '';
+
       setBlogData((prev) => ({
         ...prev,
         selectedTitle: title,
-        content: result.data.blog.content.markdown,
+        content,
       }));
       setStep('content');
     } catch (err) {

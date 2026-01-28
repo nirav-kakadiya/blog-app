@@ -65,7 +65,9 @@ export function ImagePanel({
 
   const handleUpdateAltText = useCallback(async (imageId: string, altText: string) => {
     if (!onUpdateAltText) return;
-    await onUpdateAltText(imageId, altText);
+    const trimmedAltText = altText?.trim() || '';
+    if (!trimmedAltText) return; // Don't save empty alt text
+    await onUpdateAltText(imageId, trimmedAltText);
     setEditingAltText(null);
   }, [onUpdateAltText]);
 

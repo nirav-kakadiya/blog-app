@@ -203,7 +203,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {FEATURES.map((feature, i) => (
               <div
-                key={feature.title}
+                key={`feature-${i}-${feature.title}`}
                 className="bg-white p-6 rounded-2xl border border-gray-100 hover:border-blue-100 hover:shadow-lg transition-all group"
                 style={{ animationDelay: `${i * 0.1}s` }}
               >

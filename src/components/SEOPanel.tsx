@@ -134,7 +134,8 @@ export function SEOPanel({ content, initialData, onChange }: SEOPanelProps) {
       let h2Match;
       let keywordInH2 = false;
       while ((h2Match = h2Regex.exec(content)) !== null) {
-        if (h2Match[1].toLowerCase().includes(keywordLower)) {
+        const h2Text = h2Match[1];
+        if (h2Text && h2Text.toLowerCase().includes(keywordLower)) {
           keywordInH2 = true;
           break;
         }
@@ -288,9 +289,9 @@ export function SEOPanel({ content, initialData, onChange }: SEOPanelProps) {
           </div>
           {secondaryKeywords.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {secondaryKeywords.map((keyword) => (
+              {secondaryKeywords.map((keyword, idx) => (
                 <span
-                  key={keyword}
+                  key={`${keyword}-${idx}`}
                   className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm"
                 >
                   {keyword}

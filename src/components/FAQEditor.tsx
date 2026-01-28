@@ -44,8 +44,16 @@ export function FAQEditor({
   };
 
   const handleSaveEdit = (id: string, question: string, answer: string) => {
+    // Validate inputs
+    const trimmedQuestion = question?.trim() || '';
+    const trimmedAnswer = answer?.trim() || '';
+
+    if (!trimmedQuestion || !trimmedAnswer) {
+      return; // Don't save empty values
+    }
+
     const newFaqs = faqs.map((faq) =>
-      faq.id === id ? { ...faq, question, answer } : faq
+      faq.id === id ? { ...faq, question: trimmedQuestion, answer: trimmedAnswer } : faq
     );
     updateFaqs(newFaqs);
     setEditingId(null);

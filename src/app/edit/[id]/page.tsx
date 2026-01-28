@@ -62,7 +62,11 @@ export default function EditBlogPage() {
         const res = await fetch(`/api/blogs/${blogId}`);
         if (!res.ok) throw new Error('Blog not found');
         const data = await res.json();
-        setBlog(data.data);
+        const blogData = data?.data;
+        if (!blogData || typeof blogData !== 'object') {
+          throw new Error('Invalid blog data received');
+        }
+        setBlog(blogData);
 
         // Fetch images - ensure we always get an array
         try {
@@ -175,7 +179,12 @@ export default function EditBlogPage() {
       if (!res.ok) throw new Error('Failed to generate image');
 
       const data = await res.json();
-      setImages((prev) => [...prev, data.data]);
+      const newImage = data?.data?.image || data?.data;
+      if (newImage && typeof newImage === 'object' && newImage.id) {
+        setImages((prev) => [...prev, newImage]);
+      } else {
+        throw new Error('Invalid image data received');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate image');
     } finally {

@@ -47,8 +47,11 @@ export function TitleSelector({ titles, onSelect, onRegenerate, loading = false 
   const handleProceed = () => {
     if (isCustom && customTitle.trim()) {
       onSelect(customTitle.trim());
-    } else if (selectedIndex !== null) {
-      onSelect(editedTitles[selectedIndex]);
+    } else if (selectedIndex !== null && selectedIndex >= 0 && selectedIndex < editedTitles.length) {
+      const title = editedTitles[selectedIndex];
+      if (title) {
+        onSelect(title);
+      }
     }
   };
 

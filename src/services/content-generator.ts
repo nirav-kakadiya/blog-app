@@ -1413,10 +1413,15 @@ Return ONLY the meta description text.`;
       blogType,
     });
 
+    // Safely extract section IDs with fallback
+    const sections = template?.sections?.required
+      ? template.sections.required.map((s) => s?.id).filter(Boolean)
+      : [];
+
     return {
       content,
       metaDescription,
-      sections: template.sections.required.map((s) => s.id),
+      sections,
     };
   } catch (error) {
     logger.error('Content generation failed', { error: String(error), blogType });

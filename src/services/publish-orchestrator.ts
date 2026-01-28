@@ -52,12 +52,16 @@ export async function publishBlog(
     keyword: blog.keyword,
     blogType: blog.blogType as BlogType,
     canonicalUrl: blog.canonicalUrl || undefined,
-    tags: blog.secondaryKeywords,
-    images: blog.images.map((img) => ({
-      url: img.s3Url,
-      altText: img.altText,
-      placement: img.placement,
-    })),
+    tags: Array.isArray(blog.secondaryKeywords) ? blog.secondaryKeywords : [],
+    images: Array.isArray(blog.images)
+      ? blog.images
+          .filter((img) => img && img.s3Url)
+          .map((img) => ({
+            url: img.s3Url,
+            altText: img.altText || '',
+            placement: img.placement || 'hero',
+          }))
+      : [],
   };
 
   const results: PublishResult[] = [];

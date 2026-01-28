@@ -137,11 +137,24 @@ export function BlogEditor({
     editor.commands.setContent(markdownToHtml(markdown));
   }, [editor]);
 
-  // Expose methods via ref pattern
+  // Expose methods via ref pattern - use a safer approach
   useEffect(() => {
-    if (editor) {
-      (editor as unknown as { getMarkdown?: () => string; setMarkdown?: (md: string) => void }).getMarkdown = getMarkdown;
-      (editor as unknown as { getMarkdown?: () => string; setMarkdown?: (md: string) => void }).setMarkdown = setMarkdown;
+    if (editor && typeof editor === 'object') {
+      try {
+        // Define the methods as non-enumerable to avoid conflicts
+        Object.defineProperty(editor, 'getMarkdown', {
+          value: getMarkdown,
+          writable: true,
+          configurable: true,
+        });
+        Object.defineProperty(editor, 'setMarkdown', {
+          value: setMarkdown,
+          writable: true,
+          configurable: true,
+        });
+      } catch {
+        // Silently fail if properties can't be set
+      }
     }
   }, [editor, getMarkdown, setMarkdown]);
 
