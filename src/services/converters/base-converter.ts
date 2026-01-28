@@ -1,4 +1,5 @@
 import { BlogType, Platform } from '@/types';
+import { normalizeMarkdown, extractTitle, extractMetaDescription } from '@/lib/content-normalizer';
 
 export interface BlogData {
   id: string;
@@ -24,11 +25,107 @@ export interface ConvertedContent {
   platform: Platform;
   html?: string;
   extra?: Record<string, unknown>;
+  warnings?: string[];
 }
 
 export abstract class BasePlatformConverter {
   abstract platform: Platform;
   abstract convert(blog: BlogData): ConvertedContent;
+
+  /**
+   * Normalize and validate blog data before conversion
+   * Call this at the start of convert() for robust handling
+   */
+  protected normalizeBlogData(blog: BlogData): BlogData & { _warnings: string[] } {
+    const warnings: string[] = [];
+
+    // Normalize content
+    const { content: normalizedContent, warnings: contentWarnings, wasModified } = normalizeMarkdown(blog.content);
+    if (wasModified) {
+      warnings.push(...contentWarnings);
+    }
+
+    // Ensure title exists
+    let title = blog.title?.trim() || '';
+    if (!title) {
+      const extractedTitle = extractTitle(normalizedContent);
+      if (extractedTitle) {
+        title = extractedTitle;
+        warnings.push('Title was extracted from content');
+      } else {
+        title = blog.keyword || 'Untitled';
+        warnings.push('Using keyword as fallback title');
+      }
+    }
+
+    // Ensure meta description exists
+    let metaDescription = blog.metaDescription?.trim() || '';
+    if (!metaDescription) {
+      metaDescription = extractMetaDescription(normalizedContent);
+      if (metaDescription) {
+        warnings.push('Meta description was extracted from content');
+      }
+    }
+
+    // Ensure keyword exists
+    const keyword = blog.keyword?.trim() || title.split(' ').slice(0, 3).join(' ');
+
+    // Normalize images array
+    const images = Array.isArray(blog.images)
+      ? blog.images.filter(img => img && typeof img.url === 'string' && img.url)
+      : [];
+
+    // Normalize tags/keywords
+    const tags = Array.isArray(blog.tags)
+      ? blog.tags.filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+      : [];
+
+    const secondaryKeywords = Array.isArray(blog.secondaryKeywords)
+      ? blog.secondaryKeywords.filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
+      : [];
+
+    return {
+      ...blog,
+      content: normalizedContent,
+      title,
+      metaDescription,
+      keyword,
+      images,
+      tags,
+      secondaryKeywords,
+      blogType: blog.blogType || 'guide',
+      _warnings: warnings,
+    };
+  }
+
+  /**
+   * Wrap conversion with error handling
+   */
+  protected safeConvert(blog: BlogData, convertFn: (normalizedBlog: BlogData) => ConvertedContent): ConvertedContent {
+    try {
+      const normalizedBlog = this.normalizeBlogData(blog);
+      const result = convertFn(normalizedBlog);
+
+      // Add any normalization warnings
+      if (normalizedBlog._warnings.length > 0) {
+        result.warnings = [...(result.warnings || []), ...normalizedBlog._warnings];
+      }
+
+      return result;
+    } catch (error) {
+      // Return a safe fallback on conversion error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown conversion error';
+      return {
+        content: blog.content || '',
+        metadata: {
+          title: blog.title || blog.keyword || 'Untitled',
+          error: errorMessage,
+        },
+        platform: this.platform,
+        warnings: [`Conversion failed: ${errorMessage}. Returning raw content.`],
+      };
+    }
+  }
 
   // Common utilities
   protected stripMarkdown(text: string): string {

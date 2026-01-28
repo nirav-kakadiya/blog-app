@@ -24,7 +24,7 @@ interface ImagePanelProps {
 
 export function ImagePanel({
   blogId,
-  images,
+  images: rawImages,
   onInsert,
   onRegenerate,
   onDelete,
@@ -32,6 +32,9 @@ export function ImagePanel({
   onGenerateNew,
   isGenerating = false,
 }: ImagePanelProps) {
+  // Ensure images is always an array to handle API returning non-array values
+  const images = Array.isArray(rawImages) ? rawImages : [];
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingAltText, setEditingAltText] = useState<string | null>(null);
   const [newPrompt, setNewPrompt] = useState('');

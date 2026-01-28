@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Platform, BlogType } from '@/types';
 import { convertForPlatform, BlogData, ConvertedContent } from './converters';
 import { logger } from '@/lib/logger';
+import { normalizeMarkdown, validateBlogData } from '@/lib/content-normalizer';
 
 export interface PublishOptions {
   platforms: Platform[];
@@ -135,6 +136,11 @@ export async function previewForPlatform(
   blogId: string,
   platform: Platform
 ): Promise<ConvertedContent> {
+  // Validate inputs
+  if (!blogId || typeof blogId !== 'string') {
+    throw new Error('Invalid blog ID');
+  }
+
   const blog = await prisma.blog.findUnique({
     where: { id: blogId },
     include: { images: true },
@@ -144,27 +150,65 @@ export async function previewForPlatform(
     throw new Error('Blog not found');
   }
 
-  if (!blog.content) {
+  // Normalize content to handle LLM formatting issues
+  const { content: normalizedContent, warnings } = normalizeMarkdown(blog.content);
+
+  if (!normalizedContent || normalizedContent.trim().length === 0) {
     throw new Error('Blog has no content');
   }
 
+  // Build blog data with safe defaults
   const blogData: BlogData = {
     id: blog.id,
-    title: blog.title || blog.keyword,
-    content: blog.content,
-    metaDescription: blog.metaDescription || '',
-    keyword: blog.keyword,
-    blogType: blog.blogType as BlogType,
-    canonicalUrl: blog.canonicalUrl || undefined,
-    tags: blog.secondaryKeywords,
-    images: blog.images.map((img) => ({
-      url: img.s3Url,
-      altText: img.altText,
-      placement: img.placement,
-    })),
+    title: blog.title?.trim() || blog.keyword || 'Untitled',
+    content: normalizedContent,
+    metaDescription: blog.metaDescription?.trim() || '',
+    keyword: blog.keyword || '',
+    blogType: (blog.blogType as BlogType) || 'guide',
+    canonicalUrl: blog.canonicalUrl?.trim() || undefined,
+    tags: Array.isArray(blog.secondaryKeywords) ? blog.secondaryKeywords : [],
+    images: Array.isArray(blog.images)
+      ? blog.images
+          .filter((img) => img && img.s3Url)
+          .map((img) => ({
+            url: img.s3Url,
+            altText: img.altText || '',
+            placement: img.placement || 'hero',
+          }))
+      : [],
   };
 
-  return convertForPlatform(blogData, platform);
+  try {
+    const result = convertForPlatform(blogData, platform);
+
+    // Add normalization warnings to result
+    if (warnings.length > 0) {
+      result.warnings = [...(result.warnings || []), ...warnings];
+    }
+
+    return result;
+  } catch (conversionError) {
+    logger.error('Platform conversion failed', {
+      platform,
+      blogId,
+      error: String(conversionError),
+    });
+
+    // Return a fallback result instead of throwing
+    return {
+      content: normalizedContent,
+      metadata: {
+        title: blogData.title,
+        error: conversionError instanceof Error ? conversionError.message : 'Conversion failed',
+      },
+      platform,
+      warnings: [
+        `Conversion to ${platform} format failed: ${conversionError instanceof Error ? conversionError.message : 'Unknown error'}`,
+        'Showing raw content instead.',
+        ...warnings,
+      ],
+    };
+  }
 }
 
 export async function getPublishStatus(blogId: string): Promise<{

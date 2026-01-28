@@ -64,11 +64,17 @@ export default function EditBlogPage() {
         const data = await res.json();
         setBlog(data.data);
 
-        // Fetch images
-        const imagesRes = await fetch(`/api/images/blog/${blogId}`);
-        if (imagesRes.ok) {
-          const imagesData = await imagesRes.json();
-          setImages(imagesData.data || []);
+        // Fetch images - ensure we always get an array
+        try {
+          const imagesRes = await fetch(`/api/images/blog/${blogId}`);
+          if (imagesRes.ok) {
+            const imagesData = await imagesRes.json();
+            const imagesList = imagesData?.data;
+            setImages(Array.isArray(imagesList) ? imagesList : []);
+          }
+        } catch (imgErr) {
+          console.error('Failed to fetch images:', imgErr);
+          setImages([]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load blog');

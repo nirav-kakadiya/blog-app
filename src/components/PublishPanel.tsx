@@ -71,6 +71,7 @@ export function PublishPanel({
   const [isPublishing, setIsPublishing] = useState(false);
   const [previewPlatform, setPreviewPlatform] = useState<Platform | null>(null);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
 
   const togglePlatform = useCallback((platform: Platform) => {
@@ -91,12 +92,24 @@ export function PublishPanel({
     setPreviewPlatform(platform);
     setPreviewLoading(true);
     setPreviewContent(null);
+    setPreviewWarnings([]);
 
     try {
       const result = await onPreview(platform);
-      setPreviewContent(result.content);
+      // Handle both string content and object with content property
+      const content = typeof result === 'string'
+        ? result
+        : (result?.content ?? 'No content available');
+      setPreviewContent(content);
+
+      // Extract warnings if present - use type-safe extraction
+      const resultWithWarnings = result as { content: string; metadata: Record<string, unknown>; warnings?: string[] };
+      const warnings = Array.isArray(resultWithWarnings?.warnings) ? resultWithWarnings.warnings : [];
+      setPreviewWarnings(warnings);
     } catch (error) {
-      setPreviewContent(`Error loading preview: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setPreviewContent(`Error loading preview: ${errorMsg}\n\nPlease try again or check the blog content.`);
+      setPreviewWarnings([`Preview failed: ${errorMsg}`]);
     } finally {
       setPreviewLoading(false);
     }
@@ -306,9 +319,21 @@ export function PublishPanel({
                   <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
-                <pre className="text-sm font-mono whitespace-pre-wrap bg-gray-50 p-4 rounded">
-                  {previewContent}
-                </pre>
+                <>
+                  {previewWarnings.length > 0 && (
+                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm font-medium text-yellow-800 mb-1">Warnings:</p>
+                      <ul className="text-xs text-yellow-700 list-disc list-inside">
+                        {previewWarnings.map((warning, idx) => (
+                          <li key={idx}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <pre className="text-sm font-mono whitespace-pre-wrap bg-gray-50 p-4 rounded">
+                    {previewContent || 'No preview content available'}
+                  </pre>
+                </>
               )}
             </div>
             <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
