@@ -4,7 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { EditorLayout } from '@/components/Editor';
-import { BlogType } from '@/types';
+import { ImagePanel } from '@/components/ImagePanel';
+import { SEOPanel } from '@/components/SEOPanel';
+import { PublishPanel } from '@/components/PublishPanel';
+import { BlogType, Platform } from '@/types';
+
+interface BlogImage {
+  id: string;
+  prompt: string;
+  s3Url: string;
+  altText: string;
+  placement: string;
+}
 
 interface BlogData {
   id: string;
@@ -13,10 +24,23 @@ interface BlogData {
   title: string;
   metaDescription: string;
   content: string;
+  canonicalUrl?: string;
+  focusKeyword?: string;
+  secondaryKeywords?: string[];
   status: string;
   createdAt: string;
   updatedAt: string;
+  images?: BlogImage[];
 }
+
+type TabType = 'editor' | 'images' | 'seo' | 'publish';
+
+const TABS: { key: TabType; label: string; icon: string }[] = [
+  { key: 'editor', label: 'Editor', icon: '📝' },
+  { key: 'images', label: 'Images', icon: '🖼️' },
+  { key: 'seo', label: 'SEO', icon: '🔍' },
+  { key: 'publish', label: 'Publish', icon: '🚀' },
+];
 
 export default function EditBlogPage() {
   const params = useParams();
@@ -28,6 +52,9 @@ export default function EditBlogPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('editor');
+  const [images, setImages] = useState<BlogImage[]>([]);
+  const [generatingImages, setGeneratingImages] = useState(false);
 
   useEffect(() => {
     async function fetchBlog() {
@@ -36,6 +63,13 @@ export default function EditBlogPage() {
         if (!res.ok) throw new Error('Blog not found');
         const data = await res.json();
         setBlog(data.data);
+
+        // Fetch images
+        const imagesRes = await fetch(`/api/images/blog/${blogId}`);
+        if (imagesRes.ok) {
+          const imagesData = await imagesRes.json();
+          setImages(imagesData.data || []);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load blog');
       } finally {
@@ -75,6 +109,33 @@ export default function EditBlogPage() {
     }
   }, [blogId]);
 
+  const handleSEOChange = useCallback(async (seoData: {
+    title: string;
+    metaDescription: string;
+    focusKeyword: string;
+    secondaryKeywords: string[];
+    canonicalUrl: string;
+  }) => {
+    if (!blogId || !blog) return;
+
+    // Debounced auto-save for SEO changes
+    try {
+      await fetch(`/api/blogs/${blogId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: seoData.title || blog.title,
+          metaDescription: seoData.metaDescription,
+          focusKeyword: seoData.focusKeyword,
+          secondaryKeywords: seoData.secondaryKeywords,
+          canonicalUrl: seoData.canonicalUrl,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to save SEO data:', err);
+    }
+  }, [blogId, blog]);
+
   const handleStatusChange = async (newStatus: string) => {
     if (!blogId) return;
 
@@ -92,6 +153,62 @@ export default function EditBlogPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update status');
     }
+  };
+
+  const handleGenerateImage = async (prompt: string) => {
+    if (!blogId) return;
+
+    setGeneratingImages(true);
+    try {
+      const res = await fetch('/api/images/generate-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId, prompt }),
+      });
+
+      if (!res.ok) throw new Error('Failed to generate image');
+
+      const data = await res.json();
+      setImages((prev) => [...prev, data.data]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate image');
+    } finally {
+      setGeneratingImages(false);
+    }
+  };
+
+  const handleDeleteImage = async (imageId: string) => {
+    try {
+      const res = await fetch(`/api/images/${imageId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete image');
+      setImages((prev) => prev.filter((img) => img.id !== imageId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete image');
+    }
+  };
+
+  const handlePublish = async (platforms: Platform[]) => {
+    if (!blogId) return { results: [] };
+
+    const res = await fetch(`/api/publish/${blogId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platforms }),
+    });
+
+    if (!res.ok) throw new Error('Failed to publish');
+
+    return res.json();
+  };
+
+  const handlePreview = async (platform: Platform) => {
+    if (!blogId) return { content: '', metadata: {} };
+
+    const res = await fetch(`/api/publish/preview/${blogId}/${platform}`);
+    if (!res.ok) throw new Error('Failed to load preview');
+
+    const data = await res.json();
+    return { content: data.data.content, metadata: data.data.metadata };
   };
 
   if (loading) {
@@ -128,7 +245,7 @@ export default function EditBlogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -141,7 +258,9 @@ export default function EditBlogPage() {
                 <span className="text-sm">Back</span>
               </Link>
               <div className="h-6 w-px bg-gray-200" />
-              <span className="text-sm text-gray-600">Edit Blog</span>
+              <span className="text-sm text-gray-600 truncate max-w-[200px]" title={blog.title}>
+                {blog.title}
+              </span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -185,37 +304,78 @@ export default function EditBlogPage() {
         </div>
       </header>
 
-      {/* Content Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-xl font-semibold text-gray-900">{blog.title}</h1>
-          <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
-            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium capitalize">
-              {blog.blogType}
-            </span>
-            <span className="text-gray-300">|</span>
-            <span>{blog.keyword}</span>
-            <span className="text-gray-300">|</span>
-            <span>
-              Last updated: {new Date(blog.updatedAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
+      {/* Tabs */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-1">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.key
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="mr-2">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Editor */}
-      <main className="h-[calc(100vh-140px)]">
-        <EditorLayout
-          initialContent={blog.content}
-          onSave={handleSaveContent}
-          placeholder="Start editing your blog post..."
-        />
+      {/* Content */}
+      <main className="flex-1 overflow-hidden">
+        {activeTab === 'editor' && (
+          <div className="h-full">
+            <EditorLayout
+              initialContent={blog.content}
+              onSave={handleSaveContent}
+              placeholder="Start editing your blog post..."
+            />
+          </div>
+        )}
+
+        {activeTab === 'images' && (
+          <div className="max-w-4xl mx-auto px-4 py-6">
+            <ImagePanel
+              blogId={blogId}
+              images={images}
+              onGenerateNew={handleGenerateImage}
+              onDelete={handleDeleteImage}
+              isGenerating={generatingImages}
+            />
+          </div>
+        )}
+
+        {activeTab === 'seo' && (
+          <div className="max-w-3xl mx-auto px-4 py-6">
+            <SEOPanel
+              content={blog.content}
+              initialData={{
+                title: blog.title,
+                metaDescription: blog.metaDescription,
+                focusKeyword: blog.focusKeyword || blog.keyword,
+                secondaryKeywords: blog.secondaryKeywords || [],
+                canonicalUrl: blog.canonicalUrl || '',
+              }}
+              onChange={handleSEOChange}
+            />
+          </div>
+        )}
+
+        {activeTab === 'publish' && (
+          <div className="max-w-3xl mx-auto px-4 py-6">
+            <PublishPanel
+              blogId={blogId}
+              availablePlatforms={['medium', 'devto', 'linkedin', 'wordpress', 'ghost', 'hashnode']}
+              onPublish={handlePublish}
+              onPreview={handlePreview}
+            />
+          </div>
+        )}
       </main>
     </div>
   );

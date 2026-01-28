@@ -28,8 +28,8 @@ export function LinkModal({
   useEffect(() => {
     setUrl(initialUrl);
     setText(initialText);
-    // Auto-detect if external link
-    if (initialUrl) {
+    // Auto-detect if external link (client-side only)
+    if (initialUrl && typeof window !== 'undefined') {
       const isExt = !initialUrl.startsWith('/') && !initialUrl.includes(window.location.hostname);
       setIsExternal(isExt);
     }
