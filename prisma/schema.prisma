@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum BlogType {
+  guide
+  prompt
+  comparison
+  tips
+  usecase
+  api
+  upcoming
+  troubleshoot
+  tools
+  review
+}
+
+enum BlogStatus {
+  draft
+  review
+  published
+}
+
+enum LinkType {
+  internal
+  external
+}
+
+enum Platform {
+  medium
+  devto
+  linkedin
+  wordpress
+  ghost
+  hashnode
+  quora
+  reddit
+}
+
+model Blog {
+  id                String      @id @default(uuid())
+  keyword           String
+  blogType          BlogType
+  title             String
+  metaDescription   String?
+  content           String      @db.Text
+  canonicalUrl      String?
+  focusKeyword      String?
+  secondaryKeywords String[]
+  status            BlogStatus  @default(draft)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  images         Image[]
+  links          Link[]
+  publishRecords PublishRecord[]
+
+  @@index([status])
+  @@index([blogType])
+  @@index([createdAt])
+}
+
+model Image {
+  id        String   @id @default(uuid())
+  blogId    String
+  prompt    String
+  s3Url     String
+  altText   String
+  placement String
+  createdAt DateTime @default(now())
+
+  blog Blog @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@index([blogId])
+}
+
+model Link {
+  id        String   @id @default(uuid())
+  blogId    String
+  anchor    String
+  url       String
+  type      LinkType
+  nofollow  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  blog Blog @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@index([blogId])
+}
+
+model PublishRecord {
+  id           String    @id @default(uuid())
+  blogId       String
+  platform     Platform
+  publishedUrl String?
+  publishedAt  DateTime?
+  status       String
+
+  blog Blog @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@unique([blogId, platform])
+  @@index([blogId])
+}
