@@ -40,6 +40,7 @@ export function BlogEditor({
     extensions: getTiptapExtensions(placeholder),
     content: initialContent ? markdownToHtml(initialContent) : '',
     editable: !readOnly,
+    immediatelyRender: false, // Prevent SSR hydration mismatch
     editorProps: {
       attributes: {
         class: 'prose prose-lg max-w-none focus:outline-none',
