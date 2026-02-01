@@ -7,6 +7,7 @@ import { EditorLayout } from '@/components/Editor';
 import { ImagePanel } from '@/components/ImagePanel';
 import { SEOPanel } from '@/components/SEOPanel';
 import { PublishPanel } from '@/components/PublishPanel';
+import { ContentCheckPanel } from '@/components/ContentCheckPanel';
 import { BlogType, Platform } from '@/types';
 
 interface BlogImage {
@@ -33,12 +34,13 @@ interface BlogData {
   images?: BlogImage[];
 }
 
-type TabType = 'editor' | 'images' | 'seo' | 'publish';
+type TabType = 'editor' | 'images' | 'seo' | 'quality' | 'publish';
 
 const TABS: { key: TabType; label: string; icon: string }[] = [
   { key: 'editor', label: 'Editor', icon: '📝' },
   { key: 'images', label: 'Images', icon: '🖼️' },
   { key: 'seo', label: 'SEO', icon: '🔍' },
+  { key: 'quality', label: 'Quality', icon: '✅' },
   { key: 'publish', label: 'Publish', icon: '🚀' },
 ];
 
@@ -377,6 +379,17 @@ export default function EditBlogPage() {
                 canonicalUrl: blog.canonicalUrl || '',
               }}
               onChange={handleSEOChange}
+            />
+          </div>
+        )}
+
+        {activeTab === 'quality' && (
+          <div className="max-w-3xl mx-auto px-4 py-6">
+            <ContentCheckPanel
+              content={blog.content}
+              keyword={blog.focusKeyword || blog.keyword}
+              title={blog.title}
+              blogType={blog.blogType}
             />
           </div>
         )}
