@@ -9,6 +9,8 @@ import { SEOPanel } from '@/components/SEOPanel';
 import { PublishPanel } from '@/components/PublishPanel';
 import { ContentCheckPanel } from '@/components/ContentCheckPanel';
 import { SearchScorePanel } from '@/components/SearchScorePanel';
+import { SEOAnalysisPanel } from '@/components/SEOAnalysisPanel';
+import { AEOAnalysisPanel } from '@/components/AEOAnalysisPanel';
 import { BlogType, Platform } from '@/types';
 
 interface BlogImage {
@@ -35,13 +37,15 @@ interface BlogData {
   images?: BlogImage[];
 }
 
-type TabType = 'editor' | 'images' | 'search' | 'seo' | 'quality' | 'publish';
+type TabType = 'editor' | 'images' | 'seo-analysis' | 'aeo-analysis' | 'search' | 'seo' | 'quality' | 'publish';
 
 const TABS: { key: TabType; label: string; icon: string }[] = [
   { key: 'editor', label: 'Editor', icon: '📝' },
   { key: 'images', label: 'Images', icon: '🖼️' },
-  { key: 'search', label: 'Search Score', icon: '📊' },
-  { key: 'seo', label: 'SEO Settings', icon: '🔍' },
+  { key: 'seo-analysis', label: 'SEO', icon: '🔍' },
+  { key: 'aeo-analysis', label: 'AEO', icon: '🤖' },
+  { key: 'search', label: 'Combined', icon: '📊' },
+  { key: 'seo', label: 'Settings', icon: '⚙️' },
   { key: 'quality', label: 'Quality', icon: '✅' },
   { key: 'publish', label: 'Publish', icon: '🚀' },
 ];
@@ -365,6 +369,27 @@ export default function EditBlogPage() {
               onGenerateNew={handleGenerateImage}
               onDelete={handleDeleteImage}
               isGenerating={generatingImages}
+            />
+          </div>
+        )}
+
+        {activeTab === 'seo-analysis' && (
+          <div className="max-w-3xl mx-auto px-4 py-6">
+            <SEOAnalysisPanel
+              content={blog.content}
+              keyword={blog.focusKeyword || blog.keyword}
+              title={blog.title}
+            />
+          </div>
+        )}
+
+        {activeTab === 'aeo-analysis' && (
+          <div className="max-w-3xl mx-auto px-4 py-6">
+            <AEOAnalysisPanel
+              content={blog.content}
+              keyword={blog.focusKeyword || blog.keyword}
+              title={blog.title}
+              blogType={blog.blogType}
             />
           </div>
         )}
