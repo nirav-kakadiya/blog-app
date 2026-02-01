@@ -127,7 +127,7 @@ export default function SettingsPage() {
         showMessage('success', 'Brand profile created');
         await fetchProfiles();
       } else {
-        showMessage('error', data.error || 'Failed to create profile');
+        showMessage('error', data.error?.message || 'Failed to create profile');
       }
     } catch {
       showMessage('error', 'Failed to create profile');
@@ -183,7 +183,7 @@ export default function SettingsPage() {
         setSelectedCrawlTools(new Set(data.data.discovered.map((t: DiscoveredTool) => t.path)));
         showMessage('success', `Found ${data.data.discovered.length} new pages (${data.data.totalEntries} total)`);
       } else {
-        showMessage('error', data.error || 'Crawl failed');
+        showMessage('error', data.error?.message || data.error || 'Crawl failed');
       }
     } catch {
       showMessage('error', 'Sitemap crawl failed');
@@ -589,8 +589,8 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-1">
-                      {crawlResults.slice(0, 100).map(tool => (
-                        <label key={tool.path} className="flex items-center gap-2 py-1 text-sm cursor-pointer hover:bg-blue-100 px-2 rounded">
+                      {crawlResults.slice(0, 100).map((tool, idx) => (
+                        <label key={`${tool.path}-${idx}`} className="flex items-center gap-2 py-1 text-sm cursor-pointer hover:bg-blue-100 px-2 rounded">
                           <input
                             type="checkbox"
                             checked={selectedCrawlTools.has(tool.path)}
