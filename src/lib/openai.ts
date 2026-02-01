@@ -33,6 +33,52 @@ class OpenAIClient {
     return this.client;
   }
 
+  async searchWeb(query: string, instructions: string): Promise<string> {
+    logger.info('OpenAI web search request', { queryLength: query.length });
+
+    try {
+      const client = this.getClient();
+
+      const response = await retry(
+        async () => {
+          return client.responses.create({
+            model: 'gpt-4o-mini',
+            tools: [{ type: 'web_search_preview' as const }],
+            instructions,
+            input: query,
+          });
+        },
+        {
+          maxAttempts: 2,
+          retryOn: isRetryableError,
+        }
+      );
+
+      // Extract text content from response output items
+      let content = '';
+      if (response.output && Array.isArray(response.output)) {
+        for (const item of response.output) {
+          if (item.type === 'message' && item.content) {
+            for (const block of item.content) {
+              if (block.type === 'output_text') {
+                content += block.text;
+              }
+            }
+          }
+        }
+      }
+
+      logger.info('OpenAI web search success', { contentLength: content.length });
+      return content;
+    } catch (error) {
+      logger.error('OpenAI web search error', { error: String(error) });
+      throw new APIError(
+        error instanceof Error ? error.message : 'OpenAI web search failed',
+        'openai'
+      );
+    }
+  }
+
   async generate(options: GenerateOptions): Promise<GenerateResponse> {
     const {
       prompt,

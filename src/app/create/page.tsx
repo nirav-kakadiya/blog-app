@@ -88,7 +88,7 @@ export default function CreateBlogPage() {
 
     // Show the generation step with progress
     setStep('generating');
-    setGenerationPhase('Writing blog content...');
+    setGenerationPhase('Researching topic...');
 
     try {
       // This single API call now handles: content generation + image generation + image insertion
@@ -348,33 +348,27 @@ export default function CreateBlogPage() {
                 <div className="space-y-6">
                   {/* Phase indicators */}
                   <GenerationStep
+                    label="Researching topic"
+                    description="Searching the web for real facts, stats, pricing, and expert opinions"
+                    active={generationPhase.includes('Research') || generationPhase === ''}
+                    done={generationPhase.includes('content') || generationPhase.includes('image') || generationPhase.includes('insert') || generationPhase.includes('SEO')}
+                  />
+                  <GenerationStep
                     label="Generating blog content"
-                    description="Writing SEO-optimized article with GPT-4o"
-                    active={generationPhase.includes('content') || generationPhase === ''}
+                    description="Writing expert SEO + AEO optimized article with real research data"
+                    active={generationPhase.includes('content')}
                     done={generationPhase.includes('image') || generationPhase.includes('insert') || generationPhase.includes('SEO')}
                   />
                   <GenerationStep
-                    label="Creating image prompts"
-                    description="Designing prompts based on your keyword and title"
-                    active={generationPhase.includes('prompt')}
-                    done={generationPhase.includes('Generating image') || generationPhase.includes('insert') || generationPhase.includes('SEO')}
-                  />
-                  <GenerationStep
                     label="Generating images"
-                    description="Creating visuals with Imagen 3 AI"
-                    active={generationPhase.includes('Generating image') || generationPhase.includes('Uploading')}
+                    description="Creating AI visuals with Imagen 3"
+                    active={generationPhase.includes('image') || generationPhase.includes('Generating image') || generationPhase.includes('Uploading')}
                     done={generationPhase.includes('insert') || generationPhase.includes('SEO')}
                   />
                   <GenerationStep
-                    label="Inserting images & analyzing"
-                    description="Placing images, SEO + AEO analysis, Schema.org generation"
-                    active={generationPhase.includes('insert') || generationPhase.includes('SEO') || generationPhase.includes('AEO')}
-                    done={generationPhase.includes('check')}
-                  />
-                  <GenerationStep
-                    label="Content quality check"
-                    description="Verifying structure, readability and completeness"
-                    active={generationPhase.includes('check')}
+                    label="SEO + AEO analysis"
+                    description="Analyzing search optimization, Schema.org generation, quality checks"
+                    active={generationPhase.includes('insert') || generationPhase.includes('SEO') || generationPhase.includes('AEO') || generationPhase.includes('check')}
                     done={false}
                   />
                 </div>

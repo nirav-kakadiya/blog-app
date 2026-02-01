@@ -2,11 +2,13 @@ import { openai } from '@/lib/openai';
 import { getTemplate } from '@/lib/templates';
 import { BlogType } from '@/types';
 import { logger } from '@/lib/logger';
+import { ResearchData, formatResearchForPrompt } from './content-researcher';
 
 export interface ContentGeneratorInput {
   keyword: string;
   blogType: BlogType;
   title: string;
+  research?: ResearchData;
 }
 
 export interface ContentGeneratorOutput {
@@ -1887,10 +1889,10 @@ Write the complete review in Markdown showing genuine expertise through specific
 // MAIN CONTENT GENERATOR FUNCTION
 // ============================================================================
 export async function generateContent(input: ContentGeneratorInput): Promise<ContentGeneratorOutput> {
-  const { keyword, blogType, title } = input;
+  const { keyword, blogType, title, research } = input;
   const template = getTemplate(blogType);
 
-  logger.info('Generating content', { keyword, blogType, title });
+  logger.info('Generating content', { keyword, blogType, title, hasResearch: !!research });
 
   // Select appropriate prompt based on blog type
   const promptGenerators: Record<BlogType, (k: string, t: string) => string> = {
@@ -1907,7 +1909,32 @@ export async function generateContent(input: ContentGeneratorInput): Promise<Con
   };
 
   const promptGenerator = promptGenerators[blogType];
-  const prompt = promptGenerator(keyword, title);
+  let prompt = promptGenerator(keyword, title);
+
+  // Inject research data into prompt if available
+  if (research) {
+    const researchContext = formatResearchForPrompt(research);
+    if (researchContext) {
+      // Insert research data between the expert system prompt and the blog type template
+      // Find the blog type specific section marker and inject before it
+      const typeMarkerIndex = prompt.indexOf('**Title:**');
+      if (typeMarkerIndex > 0) {
+        prompt =
+          prompt.slice(0, typeMarkerIndex) +
+          researchContext +
+          '\n---\n\n' +
+          prompt.slice(typeMarkerIndex);
+      } else {
+        // Fallback: append research at the end of the prompt
+        prompt = prompt + '\n\n' + researchContext;
+      }
+      logger.info('Research data injected into prompt', {
+        keyword,
+        researchLength: researchContext.length,
+        totalPromptLength: prompt.length,
+      });
+    }
+  }
 
   try {
     // Use gpt-4o for high-quality content generation

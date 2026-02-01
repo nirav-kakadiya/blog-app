@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { generateTitles, TitleGeneratorOutput } from './title-generator';
 import { generateContent, ContentGeneratorOutput } from './content-generator';
+import { conductResearch, ResearchData } from './content-researcher';
 import { analyzeSEO, SEOAnalysis } from './seo-optimizer';
 import { analyzeAEO, AEOAnalysis } from './aeo-optimizer';
 import { checkContent, ContentCheckResult } from './content-checker';
@@ -74,19 +75,38 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
     throw new Error(`Blog not found: ${blogId}`);
   }
 
-  // Step 2a: Generate content
-  logger.info('Step 2a: Generating text content', { blogId });
+  // Step 2a: Research topic (web search for real data)
+  logger.info('Step 2a: Researching topic', { blogId });
+  let researchData: ResearchData | undefined;
+  try {
+    researchData = await conductResearch(blog.keyword, blog.blogType as BlogType, title);
+    logger.info('Research complete', {
+      blogId,
+      factCount: researchData.keyFacts.length,
+      statCount: researchData.statistics.length,
+    });
+  } catch (researchError) {
+    // Research is non-blocking — continue without it
+    logger.warn('Research failed, continuing without research data', {
+      blogId,
+      error: String(researchError),
+    });
+  }
+
+  // Step 2b: Generate content with research data
+  logger.info('Step 2b: Generating text content', { blogId, hasResearch: !!researchData });
   const contentResult = await generateContent({
     keyword: blog.keyword,
     blogType: blog.blogType as BlogType,
     title,
+    research: researchData,
   });
 
   // Insert TOC after intro
   let finalContent = insertTOC(contentResult.content, 'TL;DR');
 
-  // Step 2b: Auto-generate images based on keyword, title, and content
-  logger.info('Step 2b: Auto-generating images', { blogId });
+  // Step 2c: Auto-generate images based on keyword, title, and content
+  logger.info('Step 2c: Auto-generating images', { blogId });
   let generatedImages: {
     id: string;
     prompt: string;
@@ -139,7 +159,7 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
   const seoAnalysis = analyzeSEO(finalContent, blog.keyword, title);
 
   // Step 2d: Check content quality
-  logger.info('Step 2d: Running content checks', { blogId });
+  logger.info('Step 2d: Running content checks (SEO + quality)', { blogId });
   const contentCheck = checkContent(finalContent, blog.keyword, title, blog.blogType as BlogType);
   logger.info('Content check complete', {
     blogId,
@@ -148,7 +168,7 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
   });
 
   // Step 2e: AEO Analysis
-  logger.info('Step 2e: Running AEO analysis', { blogId });
+  logger.info('Step 2e: Running AEO + schema analysis', { blogId });
   const aeoAnalysis = analyzeAEO(finalContent, blog.keyword, title, blog.blogType as BlogType);
   logger.info('AEO analysis complete', { blogId, aeoScore: aeoAnalysis.score });
 
