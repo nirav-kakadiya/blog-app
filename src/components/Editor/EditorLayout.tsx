@@ -21,6 +21,16 @@ export function EditorLayout({ initialContent = '', onSave, onChange, placeholde
   const editorRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
+  // Sync local content state when initialContent prop changes (e.g. after auto-fix apply)
+  useEffect(() => {
+    setContent((prev) => {
+      if (prev.markdown !== initialContent) {
+        return { html: '', markdown: initialContent };
+      }
+      return prev;
+    });
+  }, [initialContent]);
+
   const handleContentChange = useCallback((newContent: { html: string; markdown: string }) => {
     setContent(newContent);
     onChange?.();

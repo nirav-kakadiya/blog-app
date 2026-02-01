@@ -34,6 +34,7 @@ export function BlogEditor({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
+  const prevInitialContentRef = useRef(initialContent);
   const localStorageKey = 'blog-editor-autosave';
 
   const editor = useEditor({
@@ -59,6 +60,24 @@ export function BlogEditor({
       }
     },
   });
+
+  // Update editor when initialContent changes externally (e.g. after auto-fix apply)
+  useEffect(() => {
+    if (!editor) return;
+    if (initialContent !== prevInitialContentRef.current) {
+      prevInitialContentRef.current = initialContent;
+      const newHtml = initialContent ? markdownToHtml(initialContent) : '';
+      editor.commands.setContent(newHtml);
+
+      const text = editor.getText();
+      setWordCount(countWords(text));
+      setReadingTime(calculateReadingTime(text));
+
+      if (onChange) {
+        onChange({ html: editor.getHTML(), markdown: initialContent });
+      }
+    }
+  }, [editor, initialContent, onChange]);
 
   // Load from localStorage on mount
   useEffect(() => {
