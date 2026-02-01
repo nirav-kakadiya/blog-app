@@ -1,15 +1,48 @@
 import StarterKit from '@tiptap/starter-kit';
+import Heading from '@tiptap/extension-heading';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import CodeBlock from '@tiptap/extension-code-block';
 import Placeholder from '@tiptap/extension-placeholder';
 
+/**
+ * Custom Heading extension that adds id attributes based on text content,
+ * enabling TOC anchor link navigation in the editor
+ */
+const HeadingWithId = Heading.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      id: {
+        default: null,
+        renderHTML(attributes) {
+          // Will be set dynamically via the rendered text
+          return attributes.id ? { id: attributes.id } : {};
+        },
+      },
+    };
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const level = node.attrs.level || 1;
+    const text = node.textContent || '';
+    const id = text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return [`h${level}`, { ...HTMLAttributes, id }, 0];
+  },
+});
+
 export const getTiptapExtensions = (placeholder?: string) => [
   StarterKit.configure({
-    heading: {
-      levels: [1, 2, 3],
-    },
-    codeBlock: false, // We use the separate CodeBlock extension
+    heading: false, // Disable default heading, use custom HeadingWithId
+    codeBlock: false,
+  }),
+  HeadingWithId.configure({
+    levels: [1, 2, 3],
   }),
   Link.configure({
     openOnClick: false,
@@ -150,13 +183,33 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(word => word.length > 0).length;
 }
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 export function markdownToHtml(markdown: string): string {
   // Basic markdown to HTML conversion
   // This is simplified - for production, use a proper markdown parser
+  const anchorCounts: Record<string, number> = {};
+  function headingReplacer(level: number) {
+    return (_match: string, text: string) => {
+      const base = slugify(text);
+      const count = anchorCounts[base] || 0;
+      anchorCounts[base] = count + 1;
+      const id = count > 0 ? `${base}-${count}` : base;
+      return `<h${level} id="${id}">${text}</h${level}>`;
+    };
+  }
+
   return markdown
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    .replace(/^### (.*$)/gim, headingReplacer(3))
+    .replace(/^## (.*$)/gim, headingReplacer(2))
+    .replace(/^# (.*$)/gim, headingReplacer(1))
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')

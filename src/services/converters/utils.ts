@@ -37,6 +37,15 @@ export function stripMarkdown(text: string): string {
     .trim();
 }
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 /**
  * Convert markdown to basic HTML
  */
@@ -48,10 +57,21 @@ export function markdownToHtml(markdown: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  // Convert headers
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Convert headers with id attributes for TOC anchor links
+  const anchorCounts: Record<string, number> = {};
+  function headingReplacer(level: number) {
+    return (_match: string, text: string) => {
+      const base = slugify(text);
+      const count = anchorCounts[base] || 0;
+      anchorCounts[base] = count + 1;
+      const id = count > 0 ? `${base}-${count}` : base;
+      return `<h${level} id="${id}">${text}</h${level}>`;
+    };
+  }
+
+  html = html.replace(/^### (.+)$/gm, headingReplacer(3));
+  html = html.replace(/^## (.+)$/gm, headingReplacer(2));
+  html = html.replace(/^# (.+)$/gm, headingReplacer(1));
 
   // Convert bold and italic
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');

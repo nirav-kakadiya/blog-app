@@ -144,11 +144,31 @@ export abstract class BasePlatformConverter {
       .trim();
   }
 
+  private slugify(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
   protected toHTML(markdown: string): string {
+    const anchorCounts: Record<string, number> = {};
+    const headingReplacer = (level: number) => {
+      return (_match: string, text: string) => {
+        const base = this.slugify(text);
+        const count = anchorCounts[base] || 0;
+        anchorCounts[base] = count + 1;
+        const id = count > 0 ? `${base}-${count}` : base;
+        return `<h${level} id="${id}">${text}</h${level}>`;
+      };
+    };
+
     return markdown
-      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^### (.*$)/gim, headingReplacer(3))
+      .replace(/^## (.*$)/gim, headingReplacer(2))
+      .replace(/^# (.*$)/gim, headingReplacer(1))
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
