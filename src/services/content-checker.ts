@@ -44,6 +44,7 @@ interface ContentMetrics {
   emptyH2s: number;
   shortSections: string[];
   longParagraphs: number;
+  plainText: string;
 }
 
 /**
@@ -112,10 +113,14 @@ function analyzeContent(content: string): ContentMetrics {
   const textOnly = content
     .replace(/```[\s\S]*?```/g, '')
     .replace(/!\[.*?\]\(.*?\)/g, '')
-    .replace(/\[.*?\]\(.*?\)/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/^#{1,6}\s+.*$/gm, '')
     .replace(/^\s*[-*]\s+/gm, '')
     .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^\|.*$/gm, '')
+    .replace(/https?:\/\/\S+/g, '')
     .trim();
 
   const words = textOnly.split(/\s+/).filter((w) => w.length > 0);
@@ -206,6 +211,7 @@ function analyzeContent(content: string): ContentMetrics {
     emptyH2s,
     shortSections,
     longParagraphs,
+    plainText: textOnly,
   };
 }
 
@@ -529,19 +535,20 @@ function runReadabilityChecks(content: string, metrics: ContentMetrics): Content
     details: formattingVariety ? undefined : 'Use **bold** or *italic* to emphasize key points',
   });
 
-  // R4: Flesch-Kincaid approximation (simplified)
+  // R4: Flesch-Kincaid approximation (on plain text, markdown stripped)
   // FK Grade Level = 0.39 * (words/sentences) + 11.8 * (syllables/words) - 15.59
-  const syllableCount = estimateSyllables(content);
+  const syllableCount = estimateSyllables(metrics.plainText);
   const wordsCount = Math.max(metrics.wordCount, 1);
   const sentCount = Math.max(metrics.sentenceCount, 1);
-  const fkGrade = 0.39 * (wordsCount / sentCount) + 11.8 * (syllableCount / wordsCount) - 15.59;
+  const fkGradeRaw = 0.39 * (wordsCount / sentCount) + 11.8 * (syllableCount / wordsCount) - 15.59;
+  const fkGrade = Math.round(fkGradeRaw);
   const fkOk = fkGrade >= 6 && fkGrade <= 14;
   checks.push({
     id: 'readability_score',
     name: 'Reading Level',
     category: 'readability',
     passed: fkOk,
-    message: `Reading level: grade ${Math.round(fkGrade)} (ideal: 6-14)`,
+    message: `Reading level: grade ${fkGrade} (ideal: 6-14)`,
     importance: 'optional',
     details: !fkOk
       ? fkGrade > 14
