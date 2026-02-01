@@ -35,6 +35,7 @@ export function BlogEditor({
   const [isSaving, setIsSaving] = useState(false);
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
   const prevInitialContentRef = useRef(initialContent);
+  const isExternalUpdateRef = useRef(false);
   const localStorageKey = 'blog-editor-autosave';
 
   const editor = useEditor({
@@ -48,6 +49,12 @@ export function BlogEditor({
       },
     },
     onUpdate: ({ editor }) => {
+      // Skip notifying parent when content was set externally (e.g. auto-fix apply)
+      if (isExternalUpdateRef.current) {
+        isExternalUpdateRef.current = false;
+        return;
+      }
+
       const html = editor.getHTML();
       const text = editor.getText();
       const markdown = htmlToMarkdown(html);
@@ -66,18 +73,15 @@ export function BlogEditor({
     if (!editor) return;
     if (initialContent !== prevInitialContentRef.current) {
       prevInitialContentRef.current = initialContent;
+      isExternalUpdateRef.current = true;
       const newHtml = initialContent ? markdownToHtml(initialContent) : '';
       editor.commands.setContent(newHtml);
 
       const text = editor.getText();
       setWordCount(countWords(text));
       setReadingTime(calculateReadingTime(text));
-
-      if (onChange) {
-        onChange({ html: editor.getHTML(), markdown: initialContent });
-      }
     }
-  }, [editor, initialContent, onChange]);
+  }, [editor, initialContent]);
 
   // Load from localStorage on mount
   useEffect(() => {
