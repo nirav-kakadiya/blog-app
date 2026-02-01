@@ -3,12 +3,21 @@ import { getTemplate } from '@/lib/templates';
 import { BlogType } from '@/types';
 import { logger } from '@/lib/logger';
 import { ResearchData, formatResearchForPrompt } from './content-researcher';
+import { findRelevantLinks, buildPlatformPromptSection, BrandToolData } from '@/lib/platform-links';
+
+export interface BrandProfileInput {
+  name: string;
+  domain: string;
+  description?: string | null;
+  tools: BrandToolData[];
+}
 
 export interface ContentGeneratorInput {
   keyword: string;
   blogType: BlogType;
   title: string;
   research?: ResearchData;
+  brandProfile?: BrandProfileInput;
 }
 
 export interface ContentGeneratorOutput {
@@ -274,6 +283,8 @@ For the primary keyword, place it naturally in:
 8. NEVER force the keyword where it reads unnaturally — readability always wins
 
 ---
+
+{PLATFORM_CONTEXT}
 
 ## PRE-SUBMISSION QUALITY SELF-CHECK
 
@@ -1934,6 +1945,20 @@ export async function generateContent(input: ContentGeneratorInput): Promise<Con
         totalPromptLength: prompt.length,
       });
     }
+  }
+
+  // Inject platform/brand context if available
+  if (input.brandProfile && input.brandProfile.tools.length > 0) {
+    const matches = findRelevantLinks(keyword, blogType, input.brandProfile.tools, input.brandProfile.domain);
+    const platformSection = buildPlatformPromptSection(input.brandProfile, matches);
+    prompt = prompt.replace('{PLATFORM_CONTEXT}', platformSection);
+    logger.info('Platform context injected into prompt', {
+      keyword,
+      brand: input.brandProfile.name,
+      matchedTools: matches.length,
+    });
+  } else {
+    prompt = prompt.replace('{PLATFORM_CONTEXT}', '');
   }
 
   try {

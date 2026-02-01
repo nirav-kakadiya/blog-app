@@ -1,6 +1,8 @@
 import { openai } from '@/lib/openai';
 import { BlogType } from '@/types';
 import { logger } from '@/lib/logger';
+import { prisma } from '@/lib/prisma';
+import { findRelevantLinks } from '@/lib/platform-links';
 
 interface FailedCheck {
   id: string;
@@ -43,6 +45,7 @@ CRITICAL RULES:
 7. Keep all existing images, links, and code blocks intact
 8. Do not add fake statistics or made-up data — if a check asks for data points, use general factual statements
 9. Do not remove or rearrange existing sections unless a check specifically requires structural changes
+10. When fixing "Internal Links" or "Platform Links" issues, add links to the brand's platform pages using the URLs provided in the PLATFORM URLS section below (if available)
 
 OUTPUT FORMAT:
 Return the improved markdown content first, then on a new line write exactly:
@@ -93,6 +96,43 @@ ${suggestionsText}`;
   return prompt;
 }
 
+async function appendPlatformContext(prompt: string, keyword: string, blogType: string): Promise<string> {
+  try {
+    const brandProfile = await prisma.brandProfile.findFirst({
+      where: { isDefault: true },
+      include: { tools: { orderBy: { priority: 'asc' } } },
+    });
+
+    if (!brandProfile || brandProfile.tools.length === 0) return prompt;
+
+    const matches = findRelevantLinks(
+      keyword,
+      blogType,
+      brandProfile.tools.map(t => ({
+        id: t.id,
+        name: t.name,
+        path: t.path,
+        category: t.category,
+        keywords: t.keywords,
+        description: t.description,
+        priority: t.priority,
+      })),
+      brandProfile.domain,
+      10
+    );
+
+    if (matches.length === 0) return prompt;
+
+    const urlLines = matches
+      .map(m => `- ${m.tool.name}: ${m.fullUrl}`)
+      .join('\n');
+
+    return prompt + `\n\nPLATFORM URLS (use these for adding internal/platform links):\nBrand: ${brandProfile.name} (${brandProfile.domain})\n${urlLines}`;
+  } catch {
+    return prompt;
+  }
+}
+
 function parseResponse(response: string): OptimizeContentResult {
   const separator = '---CHANGES---';
   const separatorIndex = response.lastIndexOf(separator);
@@ -128,7 +168,15 @@ export async function optimizeContent(input: OptimizeContentInput): Promise<Opti
     hasUserNotes: !!input.userNotes,
   });
 
-  const userPrompt = buildUserPrompt(input);
+  let userPrompt = buildUserPrompt(input);
+
+  // Append platform URLs if link-related checks failed
+  const hasLinkIssues = input.failedChecks.some(c =>
+    c.id === 'internal_links' || c.id === 'platform_links'
+  );
+  if (hasLinkIssues) {
+    userPrompt = await appendPlatformContext(userPrompt, input.keyword, input.blogType);
+  }
 
   const response = await openai.generate({
     prompt: userPrompt,

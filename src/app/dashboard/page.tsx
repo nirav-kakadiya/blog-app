@@ -6,7 +6,7 @@ import { BLOG_TYPE_ICONS, STAT_ICONS } from '@/components/ui/icons';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { SkeletonStatCard, SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/hooks/useToast';
-import { Plus, Search, BookOpen, Pencil, Trash2, FileText } from 'lucide-react';
+import { Plus, Search, BookOpen, Pencil, Trash2, FileText, Settings } from 'lucide-react';
 
 interface Blog {
   id: string;
@@ -140,6 +140,13 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              <Link
+                href="/settings"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Settings
+              </Link>
               <Link
                 href="/create"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"

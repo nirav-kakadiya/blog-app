@@ -60,6 +60,9 @@ model Blog {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
+  brandProfileId String?
+  brandProfile   BrandProfile? @relation(fields: [brandProfileId], references: [id])
+
   images         Image[]
   links          Link[]
   publishRecords PublishRecord[]
@@ -67,6 +70,7 @@ model Blog {
   @@index([status])
   @@index([blogType])
   @@index([createdAt])
+  @@index([brandProfileId])
 }
 
 model Image {
@@ -95,6 +99,41 @@ model Link {
   blog Blog @relation(fields: [blogId], references: [id], onDelete: Cascade)
 
   @@index([blogId])
+}
+
+model BrandProfile {
+  id          String   @id @default(uuid())
+  userId      String?
+  name        String
+  domain      String
+  sitemapUrl  String?
+  description String?  @db.Text
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tools BrandTool[]
+  blogs Blog[]
+
+  @@index([userId])
+  @@index([isDefault])
+}
+
+model BrandTool {
+  id             String   @id @default(uuid())
+  brandProfileId String
+  name           String
+  path           String
+  category       String
+  keywords       String[]
+  description    String?
+  priority       Int      @default(5)
+  isAutoDetected Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  brandProfile BrandProfile @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+
+  @@index([brandProfileId])
 }
 
 model PublishRecord {

@@ -10,6 +10,7 @@ import { calculateUnifiedScore, UnifiedSearchScore } from './unified-search-scor
 import { processImages } from './image-pipeline';
 import { insertTOC } from '@/lib/toc-generator';
 import { insertImagesIntoMarkdown } from '@/lib/image-inserter';
+import { findRelevantLinks, injectPlatformLinks } from '@/lib/platform-links';
 import { BlogType, BlogOutput, Platform } from '@/types';
 import { logger } from '@/lib/logger';
 
@@ -94,17 +95,73 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
     });
   }
 
-  // Step 2b: Generate content with research data
-  logger.info('Step 2b: Generating text content', { blogId, hasResearch: !!researchData });
+  // Step 2b: Fetch brand profile for platform integration
+  logger.info('Step 2b: Fetching brand profile', { blogId });
+  const brandProfile = await prisma.brandProfile.findFirst({
+    where: { isDefault: true },
+    include: { tools: { orderBy: { priority: 'asc' } } },
+  });
+
+  if (brandProfile) {
+    logger.info('Brand profile found', {
+      blogId,
+      brand: brandProfile.name,
+      toolCount: brandProfile.tools.length,
+    });
+  }
+
+  // Step 2c: Generate content with research data + brand context
+  logger.info('Step 2c: Generating text content', { blogId, hasResearch: !!researchData, hasBrand: !!brandProfile });
   const contentResult = await generateContent({
     keyword: blog.keyword,
     blogType: blog.blogType as BlogType,
     title,
     research: researchData,
+    brandProfile: brandProfile
+      ? {
+          name: brandProfile.name,
+          domain: brandProfile.domain,
+          description: brandProfile.description,
+          tools: brandProfile.tools.map(t => ({
+            id: t.id,
+            name: t.name,
+            path: t.path,
+            category: t.category,
+            keywords: t.keywords,
+            description: t.description,
+            priority: t.priority,
+          })),
+        }
+      : undefined,
   });
 
   // Insert TOC after intro
   let finalContent = insertTOC(contentResult.content, 'TL;DR');
+
+  // Post-process: inject any missing platform links
+  if (brandProfile && brandProfile.tools.length > 0) {
+    const matches = findRelevantLinks(
+      blog.keyword,
+      blog.blogType,
+      brandProfile.tools.map(t => ({
+        id: t.id,
+        name: t.name,
+        path: t.path,
+        category: t.category,
+        keywords: t.keywords,
+        description: t.description,
+        priority: t.priority,
+      })),
+      brandProfile.domain
+    );
+    const injection = injectPlatformLinks(finalContent, matches);
+    finalContent = injection.content;
+    logger.info('Platform links injected', {
+      blogId,
+      injected: injection.injectedCount,
+      existing: injection.existingCount,
+    });
+  }
 
   // Step 2c: Auto-generate images based on keyword, title, and content
   logger.info('Step 2c: Auto-generating images', { blogId });
@@ -208,6 +265,7 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
       aeoScore: aeoAnalysis.score,
       searchScore: unifiedSearchScore.overall,
       status: 'review',
+      ...(brandProfile && { brandProfileId: brandProfile.id }),
     },
     include: {
       images: true,

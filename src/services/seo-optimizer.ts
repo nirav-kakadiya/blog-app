@@ -133,14 +133,28 @@ export function analyzeSEO(content: string, keyword: string, title: string): SEO
     suggestions.push('Add a Frequently Asked Questions section');
   }
 
-  // 9. Has internal links
-  const internalLinks = (content.match(/\[.+?\]\(\/.+?\)/g) || []).length;
+  // 9. Has internal links (relative + platform domain links)
+  const relativeLinks = (content.match(/\[.+?\]\(\/.+?\)/g) || []).length;
+  // Count platform domain links dynamically — extract domains from all https links
+  // and count links that go to frequently-linked domains (likely the brand's own)
+  const allHttpsLinks = content.match(/\[.+?\]\(https?:\/\/[^)]+\)/g) || [];
+  const domainCounts: Record<string, number> = {};
+  for (const link of allHttpsLinks) {
+    const urlMatch = link.match(/\(https?:\/\/(?:www\.)?([^/)+]+)/);
+    if (urlMatch) {
+      const domain = urlMatch[1];
+      domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+    }
+  }
+  // Platform links = links to the most-linked domain with 3+ links (likely the brand)
+  const platformLinkCount = Object.values(domainCounts).filter(c => c >= 3).reduce((sum, c) => sum + c, 0);
+  const internalLinks = relativeLinks + platformLinkCount;
   const hasInternalLinks = internalLinks >= 1;
   checks.push({
     id: 'internal_links',
     name: 'Internal Links',
     passed: hasInternalLinks,
-    message: `Found ${internalLinks} internal links (recommended: 1+)`,
+    message: `Found ${internalLinks} internal/platform links (${relativeLinks} relative, ${platformLinkCount} platform) — recommended: 1+`,
     importance: 'optional',
   });
 
