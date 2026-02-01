@@ -30,6 +30,7 @@ export interface BlogOrchestrationResult {
   contentCheck: ContentCheckResult;
   unifiedSearchScore: UnifiedSearchScore;
   schemas: SchemaOutput;
+  imageError?: string;
 }
 
 // Step 1: Create initial blog draft
@@ -115,6 +116,7 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
     placement: string;
     sectionId?: string;
   }[] = [];
+  let imageGenerationError: string | undefined;
 
   try {
     generatedImages = await processImages(
@@ -149,9 +151,10 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
     }
   } catch (imageError) {
     // Image generation is non-blocking - log error and continue with content
+    imageGenerationError = imageError instanceof Error ? imageError.message : String(imageError);
     logger.error('Auto image generation failed (continuing without images)', {
       blogId,
-      error: String(imageError),
+      error: imageGenerationError,
     });
   }
 
@@ -267,6 +270,7 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
     contentCheck,
     unifiedSearchScore,
     schemas,
+    imageError: imageGenerationError,
   };
 }
 

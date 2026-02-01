@@ -112,6 +112,12 @@ export default function CreateBlogPage() {
       const searchScore = result?.data?.unifiedSearchScore?.overall ?? undefined;
       const searchGrade = result?.data?.unifiedSearchScore?.grade ?? undefined;
 
+      // Check for image generation errors
+      const imageError = result?.data?.imageError;
+      if (imageError) {
+        toast.warning(`Images failed to generate: ${imageError}. Blog was created without images.`);
+      }
+
       setBlogData((prev) => ({
         ...prev,
         selectedTitle: title,

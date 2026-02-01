@@ -5,7 +5,6 @@ import { vertexAI } from './vertex-ai';
 
 interface GenerateImageOptions {
   prompt: string;
-  model?: 'gemini-2.5-flash' | 'gemini-3-pro' | 'imagen-3';
   width?: number;
   height?: number;
 }
@@ -21,7 +20,8 @@ interface GenerateImageResponse {
  */
 class GeminiClient {
   private apiKey: string | null = null;
-  private useVertexAI: boolean = true;
+  private vertexAIFailCount: number = 0;
+  private readonly MAX_VERTEX_FAILURES = 5;
 
   private getApiKey(): string {
     if (!this.apiKey) {
@@ -52,13 +52,12 @@ class GeminiClient {
   async generateImage(options: GenerateImageOptions): Promise<GenerateImageResponse> {
     const {
       prompt,
-      model = 'imagen-3',
       width = 1024,
       height = 1024,
     } = options;
 
-    // Try Vertex AI first (uses service account credentials)
-    if (this.useVertexAI) {
+    // Try Vertex AI first (uses service account credentials) unless too many recent failures
+    if (this.vertexAIFailCount < this.MAX_VERTEX_FAILURES) {
       try {
         logger.info('Using Vertex AI (Imagen) for image generation', {
           prompt: prompt.substring(0, 100),
@@ -66,34 +65,41 @@ class GeminiClient {
 
         const aspectRatio = this.getAspectRatio(width, height);
 
-        return await vertexAI.generateImage({
+        const result = await vertexAI.generateImage({
           prompt,
           aspectRatio,
           negativePrompt: 'blurry, low quality, distorted, watermark, text, logo',
         });
+
+        // Reset fail count on success
+        this.vertexAIFailCount = 0;
+        return result;
       } catch (vertexError) {
+        this.vertexAIFailCount++;
         logger.warn('Vertex AI failed, falling back to Gemini API', {
           error: String(vertexError),
+          failCount: this.vertexAIFailCount,
         });
-        // Fall back to Gemini API
-        this.useVertexAI = false;
       }
     }
 
-    // Fallback to Gemini API
-    return this.generateImageWithGeminiAPI(options);
+    // Fallback to Gemini API with image-capable model
+    return this.generateImageWithGeminiAPI({ prompt, width, height });
   }
 
   /**
    * Generate image using Gemini API (fallback method)
+   * Uses gemini-2.0-flash-exp which supports native image generation
    */
-  private async generateImageWithGeminiAPI(options: GenerateImageOptions): Promise<GenerateImageResponse> {
+  private async generateImageWithGeminiAPI(options: { prompt: string; width?: number; height?: number }): Promise<GenerateImageResponse> {
     const {
       prompt,
-      model = 'gemini-2.5-flash',
       width = 1024,
       height = 1024,
     } = options;
+
+    // gemini-2.0-flash-exp supports image output via responseModalities
+    const model = 'gemini-2.0-flash-exp';
 
     logger.info('Gemini API image generation request', { model, prompt: prompt.substring(0, 100) });
 
@@ -102,7 +108,6 @@ class GeminiClient {
         async () => {
           const apiKey = this.getApiKey();
 
-          // Gemini API endpoint for image generation
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
           const res = await fetch(endpoint, {
@@ -115,14 +120,14 @@ class GeminiClient {
                 {
                   parts: [
                     {
-                      text: `Generate an image: ${prompt}`,
+                      text: `Generate a high-quality professional image: ${prompt}. Do not include any text or watermarks in the image.`,
                     },
                   ],
                 },
               ],
               generationConfig: {
-                responseModalities: ['image'],
-                imageDimensions: { width, height },
+                responseModalities: ['IMAGE', 'TEXT'],
+                temperature: 1,
               },
             }),
           });
@@ -140,18 +145,20 @@ class GeminiClient {
         }
       );
 
-      // Extract image data from response
-      const imageData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+      // Extract image data from response — may be in any part
+      const parts = response.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find((p: { inlineData?: { data: string; mimeType: string } }) => p.inlineData?.data);
 
-      if (!imageData) {
+      if (!imagePart?.inlineData) {
+        logger.error('No image data in Gemini response', { parts: parts.map((p: { text?: string; inlineData?: unknown }) => p.text ? 'text' : p.inlineData ? 'image' : 'unknown') });
         throw new APIError('No image data in Gemini response', 'gemini');
       }
 
       logger.info('Gemini image generation success');
 
       return {
-        imageData: Buffer.from(imageData.data, 'base64'),
-        mimeType: imageData.mimeType || 'image/png',
+        imageData: Buffer.from(imagePart.inlineData.data, 'base64'),
+        mimeType: imagePart.inlineData.mimeType || 'image/png',
       };
     } catch (error) {
       logger.error('Gemini image generation error', { error: String(error) });
@@ -167,7 +174,6 @@ export const gemini = new GeminiClient();
 
 // Model aliases for user-friendly names
 export const IMAGE_MODELS = {
-  'nano-banana': 'gemini-2.5-flash',
-  'nano-banana-pro': 'gemini-3-pro',
+  'gemini-flash': 'gemini-2.0-flash-exp',
   'imagen-3': 'imagen-3.0-generate-001',
 } as const;

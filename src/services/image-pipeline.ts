@@ -76,7 +76,6 @@ export async function processImages(
 
         const { imageData, mimeType } = await gemini.generateImage({
           prompt: prompt.prompt,
-          model: 'gemini-2.5-flash',
           width: prompt.placement === 'hero' ? 1920 : 1280,
           height: prompt.placement === 'hero' ? 1080 : 720,
         });
@@ -182,7 +181,6 @@ export async function processingleImage(
 
   const { imageData, mimeType } = await gemini.generateImage({
     prompt: prompt.prompt,
-    model: 'gemini-2.5-flash',
     width: prompt.placement === 'hero' ? 1920 : 1280,
     height: prompt.placement === 'hero' ? 1080 : 720,
   });
@@ -266,7 +264,6 @@ export async function regenerateImage(
   // Generate new image
   const { imageData, mimeType } = await gemini.generateImage({
     prompt,
-    model: 'gemini-2.5-flash',
     width: existingImage.placement === 'hero' ? 1920 : 1280,
     height: existingImage.placement === 'hero' ? 1080 : 720,
   });
