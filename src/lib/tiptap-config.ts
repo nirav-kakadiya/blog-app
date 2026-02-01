@@ -4,6 +4,7 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import CodeBlock from '@tiptap/extension-code-block';
 import Placeholder from '@tiptap/extension-placeholder';
+import { marked, Renderer } from 'marked';
 
 /**
  * Custom Heading extension that adds id attributes based on text content,
@@ -193,40 +194,28 @@ function slugify(text: string): string {
 }
 
 export function markdownToHtml(markdown: string): string {
-  // Basic markdown to HTML conversion
-  // This is simplified - for production, use a proper markdown parser
-  const anchorCounts: Record<string, number> = {};
-  function headingReplacer(level: number) {
-    return (_match: string, text: string) => {
-      const base = slugify(text);
-      const count = anchorCounts[base] || 0;
-      anchorCounts[base] = count + 1;
-      const id = count > 0 ? `${base}-${count}` : base;
-      return `<h${level} id="${id}">${text}</h${level}>`;
-    };
-  }
+  if (!markdown) return '';
 
-  return markdown
-    .replace(/^### (.*$)/gim, headingReplacer(3))
-    .replace(/^## (.*$)/gim, headingReplacer(2))
-    .replace(/^# (.*$)/gim, headingReplacer(1))
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m: string, text: string, url: string) => {
-      // Block javascript: and data: protocol links (XSS prevention)
-      if (/^\s*(javascript|data|vbscript):/i.test(url)) return text;
-      return `<a href="${url}">${text}</a>`;
-    })
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/^- (.*$)/gim, '<li>$1</li>')
-    .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^(.+)$/gim, '<p>$1</p>')
-    .replace(/<p><h/g, '<h')
-    .replace(/<\/h(\d)><\/p>/g, '</h$1>')
-    .replace(/<p><li>/g, '<ul><li>')
-    .replace(/<\/li><\/p>/g, '</li></ul>');
+  const anchorCounts: Record<string, number> = {};
+  const renderer = new Renderer();
+
+  // Add id attributes to headings for TOC anchor links
+  renderer.heading = ({ text, depth }: { text: string; depth: number }) => {
+    const plainText = text.replace(/<[^>]+>/g, '');
+    const base = slugify(plainText);
+    const count = anchorCounts[base] || 0;
+    anchorCounts[base] = count + 1;
+    const id = count > 0 ? `${base}-${count}` : base;
+    return `<h${depth} id="${id}">${text}</h${depth}>`;
+  };
+
+  // Block dangerous URL protocols (XSS prevention)
+  renderer.link = ({ href, text }: { href: string; text: string }) => {
+    if (/^\s*(javascript|data|vbscript):/i.test(href)) return text;
+    return `<a href="${href}">${text}</a>`;
+  };
+
+  return marked(markdown, { renderer, async: false }) as string;
 }
 
 export function htmlToMarkdown(html: string): string {
