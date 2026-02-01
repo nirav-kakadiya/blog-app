@@ -215,6 +215,44 @@ body {
   100% { background-position: -200% 0; }
 }
 
+/* Diff view styles */
+.diff-view {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.diff-line-added {
+  background-color: #dcfce7;
+  border-left: 3px solid #22c55e;
+}
+
+.diff-line-removed {
+  background-color: #fee2e2;
+  border-left: 3px solid #ef4444;
+}
+
+.diff-line-unchanged {
+  border-left: 3px solid transparent;
+}
+
+/* Word-level inline highlights (darker than line bg) */
+.diff-word-removed {
+  background-color: #fca5a5;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.diff-word-added {
+  background-color: #86efac;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.diff-gutter {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
 /* Prose styles for editor */
 .prose {
   line-height: 1.75;

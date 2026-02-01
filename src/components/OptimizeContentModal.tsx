@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { BlogType } from '@/types';
-import { markdownToHtml } from '@/lib/tiptap-config';
-import { Sparkles, Loader2, CheckCircle, ArrowLeft, FileText, Eye } from 'lucide-react';
+import { ContentDiffView } from '@/components/ContentDiffView';
+import { Sparkles, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
 
 interface SearchCheck {
   id: string;
@@ -35,7 +35,6 @@ interface OptimizeContentModalProps {
 }
 
 type ModalState = 'input' | 'loading' | 'preview' | 'error';
-type PreviewTab = 'optimized' | 'original';
 
 export function OptimizeContentModal({
   isOpen,
@@ -55,7 +54,6 @@ export function OptimizeContentModal({
   const [optimizedContent, setOptimizedContent] = useState('');
   const [changesSummary, setChangesSummary] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
-  const [previewTab, setPreviewTab] = useState<PreviewTab>('optimized');
 
   const criticalCount = failedChecks.filter((c) => c.importance === 'critical').length;
   const importantCount = failedChecks.filter((c) => c.importance === 'important').length;
@@ -113,7 +111,6 @@ export function OptimizeContentModal({
     setOptimizedContent('');
     setChangesSummary([]);
     setErrorMessage('');
-    setPreviewTab('optimized');
   };
 
   const handleClose = () => {
@@ -122,7 +119,7 @@ export function OptimizeContentModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size="lg" showClose={state !== 'loading'}>
+    <Modal isOpen={isOpen} onClose={handleClose} size={state === 'preview' ? 'xl' : 'lg'} showClose={state !== 'loading'}>
       {/* Input State */}
       {state === 'input' && (
         <div>
@@ -263,49 +260,15 @@ export function OptimizeContentModal({
             </ul>
           </div>
 
-          {/* Preview Tabs */}
-          <div className="border border-gray-200 rounded-lg overflow-hidden mb-5">
-            <div className="flex border-b border-gray-200">
-              <button
-                onClick={() => setPreviewTab('optimized')}
-                className={`flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                  previewTab === 'optimized'
-                    ? 'text-purple-600 bg-purple-50/50 border-b-2 border-purple-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Eye className="w-3.5 h-3.5" />
-                Optimized
-              </button>
-              <button
-                onClick={() => setPreviewTab('original')}
-                className={`flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                  previewTab === 'original'
-                    ? 'text-gray-700 bg-gray-50 border-b-2 border-gray-400'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Original
-              </button>
-            </div>
-            <div className="max-h-80 overflow-y-auto p-4">
-              <div
-                className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700"
-                dangerouslySetInnerHTML={{
-                  __html: markdownToHtml(previewTab === 'optimized' ? optimizedContent : content),
-                }}
-              />
-            </div>
+          {/* Diff View */}
+          <div className="mb-5">
+            <ContentDiffView original={content} optimized={optimizedContent} />
           </div>
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between">
             <button
-              onClick={() => {
-                setState('input');
-                setPreviewTab('optimized');
-              }}
+              onClick={() => setState('input')}
               className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
