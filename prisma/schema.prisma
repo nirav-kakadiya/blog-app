@@ -53,6 +53,9 @@ model Blog {
   canonicalUrl      String?
   focusKeyword      String?
   secondaryKeywords String[]
+  schemaJsonLd      String?     @db.Text
+  aeoScore          Int?
+  searchScore       Int?
   status            BlogStatus  @default(draft)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt

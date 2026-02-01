@@ -69,6 +69,10 @@ export interface BlogOutput {
   links: LinkData[];
   images: ImageData[];
 
+  searchScore?: number;
+  aeoScore?: number;
+  schemaJsonLd?: string;
+
   publishRecords?: {
     platform: Platform;
     publishedUrl?: string;

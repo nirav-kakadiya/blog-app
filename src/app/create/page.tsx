@@ -37,6 +37,9 @@ export default function CreateBlogPage() {
       suggestions: string[];
     };
     seoScore?: number;
+    aeoScore?: number;
+    searchScore?: number;
+    searchGrade?: string;
   }>({});
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -103,6 +106,9 @@ export default function CreateBlogPage() {
       const imageCount = result?.data?.blog?.images?.length ?? 0;
       const contentCheck = result?.data?.contentCheck ?? undefined;
       const seoScore = result?.data?.seoAnalysis?.score ?? undefined;
+      const aeoScore = result?.data?.aeoAnalysis?.score ?? undefined;
+      const searchScore = result?.data?.unifiedSearchScore?.overall ?? undefined;
+      const searchGrade = result?.data?.unifiedSearchScore?.grade ?? undefined;
 
       setBlogData((prev) => ({
         ...prev,
@@ -111,6 +117,9 @@ export default function CreateBlogPage() {
         imageCount,
         contentCheck,
         seoScore,
+        aeoScore,
+        searchScore,
+        searchGrade,
       }));
       setStep('content');
     } catch (err) {
@@ -357,9 +366,9 @@ export default function CreateBlogPage() {
                     done={generationPhase.includes('insert') || generationPhase.includes('SEO')}
                   />
                   <GenerationStep
-                    label="Inserting images & SEO analysis"
-                    description="Placing images in content and analyzing SEO"
-                    active={generationPhase.includes('insert') || generationPhase.includes('SEO')}
+                    label="Inserting images & analyzing"
+                    description="Placing images, SEO + AEO analysis, Schema.org generation"
+                    active={generationPhase.includes('insert') || generationPhase.includes('SEO') || generationPhase.includes('AEO')}
                     done={generationPhase.includes('check')}
                   />
                   <GenerationStep
@@ -406,14 +415,22 @@ export default function CreateBlogPage() {
                         </span>
                       </>
                     )}
-                    {blogData.seoScore != null && (
+                    {blogData.searchScore != null && (
                       <>
                         <span className="text-gray-300">|</span>
                         <span className={
-                          blogData.seoScore >= 75 ? 'text-green-600' :
-                          blogData.seoScore >= 50 ? 'text-yellow-600' : 'text-red-600'
+                          blogData.searchScore >= 75 ? 'text-green-600' :
+                          blogData.searchScore >= 50 ? 'text-yellow-600' : 'text-red-600'
                         }>
-                          SEO: {blogData.seoScore}%
+                          Search: {blogData.searchGrade} ({blogData.searchScore}%)
+                        </span>
+                      </>
+                    )}
+                    {blogData.seoScore != null && blogData.aeoScore != null && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <span className="text-gray-500 text-xs">
+                          SEO {blogData.seoScore}% / AEO {blogData.aeoScore}%
                         </span>
                       </>
                     )}

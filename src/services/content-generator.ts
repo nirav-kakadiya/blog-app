@@ -49,6 +49,15 @@ const SEO_AEO_BASE_INSTRUCTIONS = `
 - **FAQ Section**: 5-10 questions with 1-2 sentence direct answers
 - **Tables**: Use for any comparative data
 
+### AEO Deep Optimization (Answer Engine Optimization)
+- **Definition Sentence**: Within first 200 words, include "[Topic] is [definition]" so LLMs can extract it
+- **Specific Data**: Include 5+ specific statistics, percentages, dates, or concrete numbers throughout
+- **Question Headings**: Make at least 30% of H2/H3 headings question-format (e.g., "What is X?", "How does X work?")
+- **Self-Contained Answers**: Under EVERY H2, the first 2 sentences must fully answer the heading WITHOUT requiring prior context
+- **Table Requirement**: Include at least ONE comparison/data table per article
+- **Structured Conclusion**: End conclusion with a numbered recap list, NOT just prose
+- **FAQ Format**: Each FAQ answer must be exactly 1-2 sentences, directly answering the question (NO "Great question!" or preamble)
+
 ### Required in EVERY Article
 - H1 Title with primary keyword
 - Intro hook (Problem + Solution + what they'll learn)

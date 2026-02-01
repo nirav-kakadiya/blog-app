@@ -2,7 +2,10 @@ import { prisma } from '@/lib/prisma';
 import { generateTitles, TitleGeneratorOutput } from './title-generator';
 import { generateContent, ContentGeneratorOutput } from './content-generator';
 import { analyzeSEO, SEOAnalysis } from './seo-optimizer';
+import { analyzeAEO, AEOAnalysis } from './aeo-optimizer';
 import { checkContent, ContentCheckResult } from './content-checker';
+import { generateSchema, SchemaOutput } from './schema-generator';
+import { calculateUnifiedScore, UnifiedSearchScore } from './unified-search-score';
 import { processImages } from './image-pipeline';
 import { insertTOC } from '@/lib/toc-generator';
 import { insertImagesIntoMarkdown } from '@/lib/image-inserter';
@@ -22,7 +25,10 @@ export interface GenerateBlogInput {
 export interface BlogOrchestrationResult {
   blog: BlogOutput;
   seoAnalysis: SEOAnalysis;
+  aeoAnalysis: AEOAnalysis;
   contentCheck: ContentCheckResult;
+  unifiedSearchScore: UnifiedSearchScore;
+  schemas: SchemaOutput;
 }
 
 // Step 1: Create initial blog draft
@@ -141,6 +147,32 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
     grade: contentCheck.grade,
   });
 
+  // Step 2e: AEO Analysis
+  logger.info('Step 2e: Running AEO analysis', { blogId });
+  const aeoAnalysis = analyzeAEO(finalContent, blog.keyword, title, blog.blogType as BlogType);
+  logger.info('AEO analysis complete', { blogId, aeoScore: aeoAnalysis.score });
+
+  // Step 2f: Generate Schema.org JSON-LD
+  logger.info('Step 2f: Generating Schema.org structured data', { blogId });
+  const schemas = generateSchema({
+    content: finalContent,
+    keyword: blog.keyword,
+    title,
+    metaDescription: contentResult.metaDescription,
+    blogType: blog.blogType as BlogType,
+    images: generatedImages.map((img) => ({ url: img.s3Url, altText: img.altText })),
+  });
+
+  // Step 2g: Calculate unified search score
+  const unifiedSearchScore = calculateUnifiedScore(seoAnalysis, aeoAnalysis, schemas);
+  logger.info('Unified search score', {
+    blogId,
+    overall: unifiedSearchScore.overall,
+    grade: unifiedSearchScore.grade,
+    seo: seoAnalysis.score,
+    aeo: aeoAnalysis.score,
+  });
+
   // Update blog in database with final content (including image references)
   const updatedBlog = await prisma.blog.update({
     where: { id: blogId },
@@ -149,6 +181,9 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
       content: finalContent,
       metaDescription: contentResult.metaDescription,
       focusKeyword: blog.keyword,
+      schemaJsonLd: schemas.jsonLd,
+      aeoScore: aeoAnalysis.score,
+      searchScore: unifiedSearchScore.overall,
       status: 'review',
     },
     include: {
@@ -208,7 +243,10 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
   return {
     blog: blogOutput,
     seoAnalysis,
+    aeoAnalysis,
     contentCheck,
+    unifiedSearchScore,
+    schemas,
   };
 }
 
