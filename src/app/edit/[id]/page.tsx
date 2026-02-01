@@ -75,6 +75,7 @@ export default function EditBlogPage() {
   const [images, setImages] = useState<BlogImage[]>([]);
   const [generatingImages, setGeneratingImages] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [scoreKey, setScoreKey] = useState(0);
 
   useUnsavedChanges(isDirty);
 
@@ -134,6 +135,31 @@ export default function EditBlogPage() {
       toast.success('Content saved successfully');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }, [blogId, toast]);
+
+  const handleOptimizeApply = useCallback(async (optimizedContent: string) => {
+    if (!blogId) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/blogs/${blogId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: optimizedContent }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save optimized content');
+
+      const data = await res.json();
+      setBlog(data.data);
+      setIsDirty(false);
+      setScoreKey((k) => k + 1);
+      toast.success('Optimized content applied');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to apply optimized content');
     } finally {
       setSaving(false);
     }
@@ -413,11 +439,14 @@ export default function EditBlogPage() {
           {activeTab === 'search' && (
             <div className="max-w-3xl mx-auto px-4 py-6">
               <SearchScorePanel
+                key={scoreKey}
                 content={blog.content}
                 keyword={blog.focusKeyword || blog.keyword}
                 title={blog.title}
                 blogType={blog.blogType}
                 metaDescription={blog.metaDescription}
+                blogId={blogId}
+                onOptimizeApply={handleOptimizeApply}
                 seoSettings={{
                   content: blog.content,
                   initialData: {

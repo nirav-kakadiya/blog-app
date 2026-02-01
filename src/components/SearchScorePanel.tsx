@@ -5,8 +5,9 @@ import { BlogType } from '@/types';
 import { SEOPanel } from '@/components/SEOPanel';
 import { SkeletonTabPanel } from '@/components/ui/Skeleton';
 import { useToast } from '@/hooks/useToast';
-import { Check, X, Zap, RefreshCw, Copy, CheckCircle } from 'lucide-react';
+import { Check, X, Zap, RefreshCw, Copy, CheckCircle, Sparkles } from 'lucide-react';
 import { getScoreColor as getScoreHex } from '@/lib/score-utils';
+import { OptimizeContentModal } from '@/components/OptimizeContentModal';
 
 interface SearchCheck {
   id: string;
@@ -62,6 +63,8 @@ interface SearchScorePanelProps {
   blogType: BlogType;
   metaDescription?: string;
   seoSettings?: SEOSettingsProps;
+  blogId?: string;
+  onOptimizeApply?: (optimizedContent: string) => void;
 }
 
 const IMPORTANCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -70,11 +73,12 @@ const IMPORTANCE_STYLES: Record<string, { bg: string; text: string; label: strin
   optional: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Optional' },
 };
 
-export function SearchScorePanel({ content, keyword, title, blogType, metaDescription, seoSettings }: SearchScorePanelProps) {
+export function SearchScorePanel({ content, keyword, title, blogType, metaDescription, seoSettings, blogId, onOptimizeApply }: SearchScorePanelProps) {
   const [result, setResult] = useState<SearchScoreResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'seo' | 'aeo' | 'schema' | 'settings'>('seo');
+  const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const toast = useToast();
 
   const runCheck = async () => {
@@ -123,6 +127,11 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
   const seoColor = getTextColor(result.seo.score);
   const aeoColor = getTextColor(result.aeo.score);
 
+  const failedChecks = [
+    ...result.seo.checks.filter((c) => !c.passed),
+    ...result.aeo.checks.filter((c) => !c.passed),
+  ];
+
   const tabs = seoSettings
     ? (['seo', 'aeo', 'schema', 'settings'] as const)
     : (['seo', 'aeo', 'schema'] as const);
@@ -140,13 +149,24 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
             </div>
             <p className="text-sm text-gray-500 mt-2 max-w-md">{result.summary}</p>
           </div>
-          <button
-            onClick={runCheck}
-            className="px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center gap-1.5"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Re-analyze
-          </button>
+          <div className="flex items-center gap-2">
+            {blogId && onOptimizeApply && failedChecks.length > 0 && (
+              <button
+                onClick={() => setShowOptimizeModal(true)}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:from-purple-700 hover:to-blue-700 flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Auto-Fix ({failedChecks.length})
+              </button>
+            )}
+            <button
+              onClick={runCheck}
+              className="px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Re-analyze
+            </button>
+          </div>
         </div>
 
         {/* SEO vs AEO side by side */}
@@ -249,6 +269,23 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
           )}
         </div>
       </div>
+
+      {/* Optimize Content Modal */}
+      {blogId && onOptimizeApply && (
+        <OptimizeContentModal
+          isOpen={showOptimizeModal}
+          onClose={() => setShowOptimizeModal(false)}
+          blogId={blogId}
+          content={content}
+          keyword={keyword}
+          title={title}
+          blogType={blogType}
+          metaDescription={metaDescription || ''}
+          failedChecks={failedChecks}
+          suggestions={result.suggestions}
+          onApply={onOptimizeApply}
+        />
+      )}
     </div>
   );
 }
