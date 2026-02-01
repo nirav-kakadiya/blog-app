@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useCallback, useEffect } from 'react';
 import { markdownToHtml, editorStyles } from '@/lib/tiptap-config';
 
 interface PreviewProps {
@@ -10,13 +10,45 @@ interface PreviewProps {
 }
 
 export function Preview({ content, isMarkdown = true, className = '' }: PreviewProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const htmlContent = useMemo(() => {
     if (!content) return '';
     return isMarkdown ? markdownToHtml(content) : content;
   }, [content, isMarkdown]);
 
+  // Intercept anchor link clicks to scroll within the preview container
+  const handleClick = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (!anchor) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const id = href.slice(1);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const heading = container.querySelector(`[id="${CSS.escape(id)}"]`);
+    if (heading) {
+      heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    el.addEventListener('click', handleClick);
+    return () => el.removeEventListener('click', handleClick);
+  }, [handleClick]);
+
   return (
-    <div className={`preview-container ${className}`}>
+    <div ref={containerRef} className={`preview-container ${className}`}>
       <style>{editorStyles}</style>
       <style>{`
         .preview-container {

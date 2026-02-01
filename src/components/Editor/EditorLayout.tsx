@@ -5,6 +5,7 @@ import { BlogEditor } from './BlogEditor';
 import { Preview } from './Preview';
 
 type ViewMode = 'edit' | 'preview' | 'split';
+type EditPaneMode = 'richtext' | 'markdown';
 
 interface EditorLayoutProps {
   initialContent?: string;
@@ -15,6 +16,7 @@ interface EditorLayoutProps {
 
 export function EditorLayout({ initialContent = '', onSave, onChange, placeholder }: EditorLayoutProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('split');
+  const [editPaneMode, setEditPaneMode] = useState<EditPaneMode>('richtext');
   const [content, setContent] = useState({ html: '', markdown: initialContent });
   const editorRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -123,12 +125,40 @@ export function EditorLayout({ initialContent = '', onSave, onChange, placeholde
       <div className="flex-1 overflow-hidden">
         {viewMode === 'edit' && (
           <div ref={editorRef} className="h-full overflow-auto">
-            <BlogEditor
-              initialContent={initialContent}
-              onChange={handleContentChange}
-              onSave={onSave}
-              placeholder={placeholder}
-            />
+            <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 border-b border-gray-200">
+              <button
+                onClick={() => setEditPaneMode('richtext')}
+                className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                  editPaneMode === 'richtext'
+                    ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Rich Text
+              </button>
+              <button
+                onClick={() => setEditPaneMode('markdown')}
+                className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                  editPaneMode === 'markdown'
+                    ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Markdown
+              </button>
+            </div>
+            {editPaneMode === 'richtext' ? (
+              <BlogEditor
+                initialContent={initialContent}
+                onChange={handleContentChange}
+                onSave={onSave}
+                placeholder={placeholder}
+              />
+            ) : (
+              <pre className="p-4 text-sm font-mono text-gray-800 whitespace-pre-wrap break-words leading-relaxed min-h-[400px]">
+                {content.markdown || initialContent}
+              </pre>
+            )}
           </div>
         )}
 
@@ -143,12 +173,40 @@ export function EditorLayout({ initialContent = '', onSave, onChange, placeholde
         {viewMode === 'split' && (
           <div className="flex h-full">
             <div ref={editorRef} className="w-1/2 border-r border-gray-200 overflow-auto">
-              <BlogEditor
-                initialContent={initialContent}
-                onChange={handleContentChange}
-                onSave={onSave}
-                placeholder={placeholder}
-              />
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                <button
+                  onClick={() => setEditPaneMode('richtext')}
+                  className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                    editPaneMode === 'richtext'
+                      ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Rich Text
+                </button>
+                <button
+                  onClick={() => setEditPaneMode('markdown')}
+                  className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                    editPaneMode === 'markdown'
+                      ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Markdown
+                </button>
+              </div>
+              {editPaneMode === 'richtext' ? (
+                <BlogEditor
+                  initialContent={initialContent}
+                  onChange={handleContentChange}
+                  onSave={onSave}
+                  placeholder={placeholder}
+                />
+              ) : (
+                <pre className="p-4 text-sm font-mono text-gray-800 whitespace-pre-wrap break-words leading-relaxed min-h-[400px]">
+                  {content.markdown || initialContent}
+                </pre>
+              )}
             </div>
             <div ref={previewRef} className="w-1/2 overflow-auto p-6 bg-gray-50">
               <div className="max-w-none">
