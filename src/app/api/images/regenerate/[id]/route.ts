@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { regenerateImage } from '@/services/image-pipeline';
+import { logger } from '@/lib/logger';
 
 const regenerateSchema = z.object({
   prompt: z.string().min(10).optional(),
@@ -22,7 +23,7 @@ export async function POST(
       data: { image },
     });
   } catch (error) {
-    console.error('Regenerate image error:', error);
+    logger.error('Regenerate image error', { error: String(error) });
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -79,8 +79,11 @@ export function markdownToHtml(markdown: string): string {
   html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
   html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
 
-  // Convert links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  // Convert links (block javascript:/data: protocols for XSS prevention)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text: string, url: string) => {
+    if (/^\s*(javascript|data|vbscript):/i.test(url)) return text;
+    return `<a href="${url}">${text}</a>`;
+  });
 
   // Convert images
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');

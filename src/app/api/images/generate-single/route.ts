@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { processingleImage } from '@/services/image-pipeline';
 import { BlogType } from '@/types';
+import { logger } from '@/lib/logger';
 
 const generateSingleSchema = z.object({
   blogId: z.string().uuid(),
@@ -16,7 +17,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { blogId, prompt, placement, altText } = generateSingleSchema.parse(body);
 
-    // Get blog data
     const blog = await prisma.blog.findUnique({
       where: { id: blogId },
     });
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Process single image
+    // Pass prompt as string — processingleImage accepts string | ImagePromptResult
     const image = await processingleImage(
       {
         id: blog.id,
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       },
       {
         prompt,
-        placement,
+        placement: placement as 'hero' | 'after_intro' | 'in_section' | 'before_cta',
         altText: altText || `${blog.keyword} illustration`,
       }
     );
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       data: { image },
     });
   } catch (error) {
-    console.error('Generate single image error:', error);
+    logger.error('Generate single image error', { error: String(error) });
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

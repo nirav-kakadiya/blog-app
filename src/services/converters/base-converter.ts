@@ -172,7 +172,10 @@ export abstract class BasePlatformConverter {
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m: string, text: string, url: string) => {
+        if (/^\s*(javascript|data|vbscript):/i.test(url)) return text;
+        return `<a href="${url}">${text}</a>`;
+      })
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
       .replace(/^- (.*$)/gim, '<li>$1</li>')

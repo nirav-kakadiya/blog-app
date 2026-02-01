@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { processImages } from '@/services/image-pipeline';
 import { BlogType } from '@/types';
+import { logger } from '@/lib/logger';
 
 const generateImagesSchema = z.object({
   blogId: z.string().uuid(),
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Generate images error:', error);
+    logger.error('Generate images error', { error: String(error) });
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

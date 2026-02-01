@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { deleteImage } from '@/services/image-pipeline';
+import { logger } from '@/lib/logger';
 
 const updateImageSchema = z.object({
   altText: z.string().max(125).optional(),
@@ -31,7 +32,7 @@ export async function GET(
       data: { image },
     });
   } catch (error) {
-    console.error('Get image error:', error);
+    logger.error('Get image error', { error: String(error) });
     return NextResponse.json(
       { success: false, error: 'Failed to get image' },
       { status: 500 }
@@ -72,7 +73,7 @@ export async function PUT(
       data: { image: updatedImage },
     });
   } catch (error) {
-    console.error('Update image error:', error);
+    logger.error('Update image error', { error: String(error) });
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -102,7 +103,7 @@ export async function DELETE(
       message: 'Image deleted',
     });
   } catch (error) {
-    console.error('Delete image error:', error);
+    logger.error('Delete image error', { error: String(error) });
 
     const message = error instanceof Error ? error.message : 'Failed to delete image';
     const status = message === 'Image not found' ? 404 : 500;

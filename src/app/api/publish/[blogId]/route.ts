@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { publishBlog } from '@/services/publish-orchestrator';
 import { Platform } from '@/types';
+import { logger } from '@/lib/logger';
 
 const publishSchema = z.object({
   platforms: z.array(z.enum(['medium', 'devto', 'linkedin', 'wordpress', 'hashnode', 'ghost', 'quora', 'reddit'])),
@@ -27,7 +28,7 @@ export async function POST(
       data: result,
     });
   } catch (error) {
-    console.error('Publish error:', error);
+    logger.error('Publish error', { error: String(error) });
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

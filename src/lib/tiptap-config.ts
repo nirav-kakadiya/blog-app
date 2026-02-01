@@ -213,7 +213,11 @@ export function markdownToHtml(markdown: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m: string, text: string, url: string) => {
+      // Block javascript: and data: protocol links (XSS prevention)
+      if (/^\s*(javascript|data|vbscript):/i.test(url)) return text;
+      return `<a href="${url}">${text}</a>`;
+    })
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/^- (.*$)/gim, '<li>$1</li>')
     .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')

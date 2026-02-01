@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { previewForPlatform } from '@/services/publish-orchestrator';
 import { Platform } from '@/types';
+import { logger } from '@/lib/logger';
 
 const VALID_PLATFORMS: Platform[] = ['medium', 'devto', 'linkedin', 'wordpress', 'hashnode', 'ghost', 'quora', 'reddit'];
 
@@ -46,7 +47,7 @@ export async function GET(
       data: safeResult,
     });
   } catch (error) {
-    console.error('Preview error:', error);
+    logger.error('Preview error', { error: String(error) });
 
     const message = error instanceof Error ? error.message : 'Failed to generate preview';
 

@@ -77,13 +77,20 @@ export async function publishBlog(
       // In a real implementation, we would call the platform's API here
       // For now, we just save the converted content and return a preview
 
-      // Save publish record
-      await prisma.publishRecord.create({
-        data: {
+      // Save publish record (upsert to handle re-publishing to same platform)
+      await prisma.publishRecord.upsert({
+        where: {
+          blogId_platform: { blogId, platform },
+        },
+        create: {
           blogId,
           platform,
           status: publishStatus === 'public' ? 'published' : 'draft',
-          publishedUrl: null, // Would be set after actual API call
+          publishedUrl: null,
+        },
+        update: {
+          status: publishStatus === 'public' ? 'published' : 'draft',
+          publishedAt: new Date(),
         },
       });
 
