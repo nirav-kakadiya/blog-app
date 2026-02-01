@@ -29,6 +29,14 @@ export default function CreateBlogPage() {
     selectedTitle?: string;
     content?: string;
     imageCount?: number;
+    contentCheck?: {
+      score: number;
+      grade: string;
+      summary: string;
+      checks: { id: string; name: string; category: string; passed: boolean; message: string; importance: string; details?: string }[];
+      suggestions: string[];
+    };
+    seoScore?: number;
   }>({});
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -93,12 +101,16 @@ export default function CreateBlogPage() {
       // Safely extract content with fallbacks
       const content = result?.data?.blog?.content?.markdown ?? result?.data?.content?.markdown ?? '';
       const imageCount = result?.data?.blog?.images?.length ?? 0;
+      const contentCheck = result?.data?.contentCheck ?? undefined;
+      const seoScore = result?.data?.seoAnalysis?.score ?? undefined;
 
       setBlogData((prev) => ({
         ...prev,
         selectedTitle: title,
         content,
         imageCount,
+        contentCheck,
+        seoScore,
       }));
       setStep('content');
     } catch (err) {
@@ -348,6 +360,12 @@ export default function CreateBlogPage() {
                     label="Inserting images & SEO analysis"
                     description="Placing images in content and analyzing SEO"
                     active={generationPhase.includes('insert') || generationPhase.includes('SEO')}
+                    done={generationPhase.includes('check')}
+                  />
+                  <GenerationStep
+                    label="Content quality check"
+                    description="Verifying structure, readability and completeness"
+                    active={generationPhase.includes('check')}
                     done={false}
                   />
                 </div>
@@ -377,6 +395,28 @@ export default function CreateBlogPage() {
                         <span className="text-green-600">{blogData.imageCount} images</span>
                       </>
                     )}
+                    {blogData.contentCheck && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <span className={
+                          blogData.contentCheck.score >= 75 ? 'text-green-600' :
+                          blogData.contentCheck.score >= 50 ? 'text-yellow-600' : 'text-red-600'
+                        }>
+                          Quality: {blogData.contentCheck.grade} ({blogData.contentCheck.score}%)
+                        </span>
+                      </>
+                    )}
+                    {blogData.seoScore != null && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <span className={
+                          blogData.seoScore >= 75 ? 'text-green-600' :
+                          blogData.seoScore >= 50 ? 'text-yellow-600' : 'text-red-600'
+                        }>
+                          SEO: {blogData.seoScore}%
+                        </span>
+                      </>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -389,6 +429,16 @@ export default function CreateBlogPage() {
                 </div>
               </div>
             </div>
+            {/* Content Check Suggestions */}
+            {blogData.contentCheck && blogData.contentCheck.suggestions.length > 0 && (
+              <ContentCheckBanner
+                score={blogData.contentCheck.score}
+                grade={blogData.contentCheck.grade}
+                summary={blogData.contentCheck.summary}
+                suggestions={blogData.contentCheck.suggestions}
+                checks={blogData.contentCheck.checks}
+              />
+            )}
             <div className="flex-1 overflow-hidden">
               <EditorLayout
                 initialContent={blogData.content}
@@ -399,6 +449,96 @@ export default function CreateBlogPage() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function ContentCheckBanner({
+  score,
+  grade,
+  summary,
+  suggestions,
+  checks,
+}: {
+  score: number;
+  grade: string;
+  summary: string;
+  suggestions: string[];
+  checks: { id: string; name: string; category: string; passed: boolean; message: string; importance: string }[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const bgColor = score >= 75 ? 'bg-green-50 border-green-200' : score >= 50 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200';
+  const textColor = score >= 75 ? 'text-green-700' : score >= 50 ? 'text-yellow-700' : 'text-red-700';
+  const iconColor = score >= 75 ? 'text-green-500' : score >= 50 ? 'text-yellow-500' : 'text-red-500';
+
+  const failedCritical = checks.filter((c) => !c.passed && c.importance === 'critical');
+  const failedImportant = checks.filter((c) => !c.passed && c.importance === 'important');
+  const failedOptional = checks.filter((c) => !c.passed && c.importance === 'optional');
+
+  return (
+    <div className={`border-b ${bgColor} px-6 py-3`}>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-1.5 ${iconColor}`}>
+              {score >= 75 ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              )}
+              <span className={`text-sm font-semibold ${textColor}`}>
+                Quality: {grade} ({score}%)
+              </span>
+            </div>
+            <span className="text-xs text-gray-500">{summary}</span>
+          </div>
+          {suggestions.length > 0 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className={`text-xs font-medium ${textColor} hover:underline flex items-center gap-1`}
+            >
+              {expanded ? 'Hide' : `${suggestions.length} suggestion(s)`}
+              <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {expanded && (
+          <div className="mt-3 space-y-2 pb-1">
+            {failedCritical.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-red-600 mb-1">Critical Issues:</p>
+                {failedCritical.map((c) => (
+                  <p key={c.id} className="text-xs text-red-600 ml-4">- {c.message}</p>
+                ))}
+              </div>
+            )}
+            {failedImportant.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-yellow-700 mb-1">Improvements:</p>
+                {failedImportant.map((c) => (
+                  <p key={c.id} className="text-xs text-yellow-700 ml-4">- {c.message}</p>
+                ))}
+              </div>
+            )}
+            {failedOptional.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1">Optional:</p>
+                {failedOptional.map((c) => (
+                  <p key={c.id} className="text-xs text-gray-500 ml-4">- {c.message}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { generateTitles, TitleGeneratorOutput } from './title-generator';
 import { generateContent, ContentGeneratorOutput } from './content-generator';
 import { analyzeSEO, SEOAnalysis } from './seo-optimizer';
+import { checkContent, ContentCheckResult } from './content-checker';
 import { processImages } from './image-pipeline';
 import { insertTOC } from '@/lib/toc-generator';
 import { insertImagesIntoMarkdown } from '@/lib/image-inserter';
@@ -21,6 +22,7 @@ export interface GenerateBlogInput {
 export interface BlogOrchestrationResult {
   blog: BlogOutput;
   seoAnalysis: SEOAnalysis;
+  contentCheck: ContentCheckResult;
 }
 
 // Step 1: Create initial blog draft
@@ -130,6 +132,15 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
   // Analyze SEO (on final content with images)
   const seoAnalysis = analyzeSEO(finalContent, blog.keyword, title);
 
+  // Step 2d: Check content quality
+  logger.info('Step 2d: Running content checks', { blogId });
+  const contentCheck = checkContent(finalContent, blog.keyword, title, blog.blogType as BlogType);
+  logger.info('Content check complete', {
+    blogId,
+    score: contentCheck.score,
+    grade: contentCheck.grade,
+  });
+
   // Update blog in database with final content (including image references)
   const updatedBlog = await prisma.blog.update({
     where: { id: blogId },
@@ -197,6 +208,7 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
   return {
     blog: blogOutput,
     seoAnalysis,
+    contentCheck,
   };
 }
 
