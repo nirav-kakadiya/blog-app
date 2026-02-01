@@ -9,6 +9,7 @@ export interface BrandProfileInput {
   name: string;
   domain: string;
   description?: string | null;
+  genuineMode?: boolean;
   tools: BrandToolData[];
 }
 

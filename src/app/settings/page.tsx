@@ -22,6 +22,7 @@ interface BrandProfile {
   sitemapUrl: string | null;
   description: string | null;
   isDefault: boolean;
+  genuineMode: boolean;
   tools: BrandTool[];
   _count?: { tools: number; blogs: number };
 }
@@ -54,6 +55,7 @@ export default function SettingsPage() {
     sitemapUrl: '',
     description: '',
     isDefault: true,
+    genuineMode: true,
   });
 
   // New tool form
@@ -123,7 +125,7 @@ export default function SettingsPage() {
       if (data.success) {
         setActiveProfile(data.data);
         setShowNewProfile(false);
-        setNewProfile({ name: '', domain: '', sitemapUrl: '', description: '', isDefault: true });
+        setNewProfile({ name: '', domain: '', sitemapUrl: '', description: '', isDefault: true, genuineMode: true });
         showMessage('success', 'Brand profile created');
         await fetchProfiles();
       } else {
@@ -386,7 +388,7 @@ export default function SettingsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                <div className="flex items-end">
+                <div className="flex flex-col gap-3 justify-end">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -406,6 +408,34 @@ export default function SettingsPage() {
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
+                </div>
+              </div>
+              {/* Promotion Mode Toggle */}
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Content Promotion Mode</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {newProfile.genuineMode
+                        ? 'Genuine — Factual content, no competitor mentions, natural linking, single CTA'
+                        : 'Aggressive — Brand as #1 in all comparisons, multiple CTAs, maximum promotion'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${!newProfile.genuineMode ? 'text-orange-600' : 'text-gray-400'}`}>Aggressive</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewProfile(p => ({ ...p, genuineMode: !p.genuineMode }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        newProfile.genuineMode ? 'bg-green-500' : 'bg-orange-500'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        newProfile.genuineMode ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                    <span className={`text-xs font-medium ${newProfile.genuineMode ? 'text-green-600' : 'text-gray-400'}`}>Genuine</span>
+                  </div>
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
@@ -471,6 +501,32 @@ export default function SettingsPage() {
                       <span className="text-gray-900">{activeProfile.description}</span>
                     </div>
                   )}
+                </div>
+                {/* Promotion Mode Toggle */}
+                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Content Promotion Mode</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {activeProfile.genuineMode
+                        ? 'Genuine — Factual content, no competitor mentions, natural linking, single CTA'
+                        : 'Aggressive — Brand as #1 in all comparisons, multiple CTAs, maximum promotion'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${!activeProfile.genuineMode ? 'text-orange-600' : 'text-gray-400'}`}>Aggressive</span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateProfile({ genuineMode: !activeProfile.genuineMode } as Partial<BrandProfile>)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        activeProfile.genuineMode ? 'bg-green-500' : 'bg-orange-500'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        activeProfile.genuineMode ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                    <span className={`text-xs font-medium ${activeProfile.genuineMode ? 'text-green-600' : 'text-gray-400'}`}>Genuine</span>
+                  </div>
                 </div>
               </div>
 

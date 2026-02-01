@@ -9,6 +9,7 @@ const UpdateSchema = z.object({
   sitemapUrl: z.string().url().optional().nullable(),
   description: z.string().optional().nullable(),
   isDefault: z.boolean().optional(),
+  genuineMode: z.boolean().optional(),
 });
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -50,6 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(validated.sitemapUrl !== undefined && { sitemapUrl: validated.sitemapUrl }),
         ...(validated.description !== undefined && { description: validated.description }),
         ...(validated.isDefault !== undefined && { isDefault: validated.isDefault }),
+        ...(validated.genuineMode !== undefined && { genuineMode: validated.genuineMode }),
       },
       include: { tools: true },
     });

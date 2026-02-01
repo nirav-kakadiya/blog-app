@@ -9,6 +9,7 @@ const CreateSchema = z.object({
   sitemapUrl: z.string().url().optional().nullable(),
   description: z.string().optional().nullable(),
   isDefault: z.boolean().optional(),
+  genuineMode: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
         sitemapUrl: validated.sitemapUrl || null,
         description: validated.description || null,
         isDefault: validated.isDefault ?? false,
+        genuineMode: validated.genuineMode ?? true,
       },
       include: { tools: true },
     });

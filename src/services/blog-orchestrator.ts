@@ -122,6 +122,7 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
           name: brandProfile.name,
           domain: brandProfile.domain,
           description: brandProfile.description,
+          genuineMode: brandProfile.genuineMode,
           tools: brandProfile.tools.map(t => ({
             id: t.id,
             name: t.name,

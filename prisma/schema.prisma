@@ -107,8 +107,9 @@ model BrandProfile {
   name        String
   domain      String
   sitemapUrl  String?
-  description String?  @db.Text
-  isDefault   Boolean  @default(false)
+  description  String?  @db.Text
+  isDefault    Boolean  @default(false)
+  genuineMode  Boolean  @default(true) // true = genuine-content-first, false = aggressive promotion
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

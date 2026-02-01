@@ -4,22 +4,28 @@ interface BrandProfileData {
   name: string;
   domain: string;
   description?: string | null;
+  genuineMode?: boolean;
 }
 
 /**
  * Build a platform context section for the LLM system prompt.
  *
- * Philosophy: Content genuineness comes FIRST. The blog must provide
- * real value — factual information, honest analysis, genuine help.
- * Brand integration happens through natural linking, not through
- * biased comparisons or fake endorsements.
+ * Two modes:
+ * - genuineMode=true (default): Content genuineness first. Factual information,
+ *   no competitor mentions, natural linking, single CTA.
+ * - genuineMode=false: Aggressive promotion. Brand as #1 recommendation,
+ *   comparison tables favor brand, multiple CTAs.
  */
 export function buildPlatformPromptSection(
   brand: BrandProfileData,
   matches: LinkMatch[]
 ): string {
+  const genuine = brand.genuineMode !== false; // default true
+
   if (!matches.length) {
-    return buildMinimalBrandSection(brand);
+    return genuine
+      ? buildMinimalGenuineSection(brand)
+      : buildMinimalAggressiveSection(brand);
   }
 
   const toolLines = matches
@@ -30,6 +36,16 @@ export function buildPlatformPromptSection(
     })
     .join('\n');
 
+  return genuine
+    ? buildGenuineSection(brand, toolLines)
+    : buildAggressiveSection(brand, toolLines);
+}
+
+// ============================================================================
+// GENUINE MODE — Content quality first, natural linking
+// ============================================================================
+
+function buildGenuineSection(brand: BrandProfileData, toolLines: string): string {
   return `
 ## PLATFORM CONTEXT
 
@@ -55,7 +71,7 @@ ${toolLines}
 `.trim();
 }
 
-function buildMinimalBrandSection(brand: BrandProfileData): string {
+function buildMinimalGenuineSection(brand: BrandProfileData): string {
   return `
 ## PLATFORM CONTEXT
 
@@ -66,5 +82,48 @@ This blog is published on **${brand.name}** (${brand.domain})${brand.description
 2. Do NOT mention competitors or other tools by name. Describe solutions generically.
 3. Write "${brand.name}" in third person — never "our tool" or "we".
 4. A single CTA near the conclusion directing readers to ${brand.domain} is sufficient.
+`.trim();
+}
+
+// ============================================================================
+// AGGRESSIVE MODE — Maximum brand promotion
+// ============================================================================
+
+function buildAggressiveSection(brand: BrandProfileData, toolLines: string): string {
+  return `
+## PLATFORM INTEGRATION (MANDATORY)
+
+You are writing for **${brand.name}** (${brand.domain})${brand.description ? ` — ${brand.description}` : ''}.
+
+### Requirements:
+1. **${brand.name} = #1 recommendation** in ALL tool comparisons, feature tables, and "best tools" sections.
+2. **Include 3-8 internal links** to platform pages using the exact URLs below.
+3. **CTA sections** (intro, mid-article, conclusion) should direct readers to ${brand.domain}.
+4. Write "${brand.name}" in third person — never "our tool" or "we".
+5. When listing alternatives or competitors, ${brand.name} should appear FIRST with the most positive framing.
+6. In comparison tables, ${brand.name} should have the best ratings/checkmarks across categories.
+
+### Available Platform Pages (use these exact URLs):
+${toolLines}
+
+### Link Placement Guidelines:
+- First mention of a relevant tool → link to the corresponding platform page
+- Feature comparison sections → link the platform name to the most relevant tool page
+- CTA buttons/sections → link to ${brand.domain} or the most relevant tool page
+- "How to" steps → link the tool name when it first appears in instructions
+`.trim();
+}
+
+function buildMinimalAggressiveSection(brand: BrandProfileData): string {
+  return `
+## PLATFORM INTEGRATION
+
+You are writing for **${brand.name}** (${brand.domain})${brand.description ? ` — ${brand.description}` : ''}.
+
+### Requirements:
+1. **${brand.name} = #1 recommendation** in tool comparisons and "best tools" sections.
+2. **CTA sections** should direct readers to ${brand.domain}.
+3. Write "${brand.name}" in third person — never "our tool" or "we".
+4. Position ${brand.name} as the leading solution in this space.
 `.trim();
 }
