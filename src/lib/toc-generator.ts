@@ -56,36 +56,65 @@ export function generateTOCMarkdown(markdown: string, options?: { maxDepth?: 2 |
 }
 
 export function insertTOC(markdown: string, afterSection?: string): string {
-  const toc = generateTOCMarkdown(markdown);
+  // First, strip any existing TOC sections the LLM may have generated
+  // This prevents duplicate TOCs
+  const cleaned = removeExistingTOC(markdown);
+
+  const toc = generateTOCMarkdown(cleaned);
 
   if (!toc) {
-    return markdown;
+    return cleaned;
   }
 
   if (afterSection) {
     // Insert after specific section
     const sectionRegex = new RegExp(`(## ${afterSection}[\\s\\S]*?)(\n## )`, 'i');
-    const match = markdown.match(sectionRegex);
+    const match = cleaned.match(sectionRegex);
 
     if (match) {
-      return markdown.replace(sectionRegex, `$1\n\n${toc}\n\n$2`);
+      return cleaned.replace(sectionRegex, `$1\n\n${toc}\n\n$2`);
     }
   }
 
   // Insert after first paragraph (after intro)
-  const firstParagraphEnd = markdown.indexOf('\n\n## ');
+  const firstParagraphEnd = cleaned.indexOf('\n\n## ');
   if (firstParagraphEnd !== -1) {
     return (
-      markdown.slice(0, firstParagraphEnd) +
+      cleaned.slice(0, firstParagraphEnd) +
       '\n\n' +
       toc +
       '\n' +
-      markdown.slice(firstParagraphEnd)
+      cleaned.slice(firstParagraphEnd)
     );
   }
 
   // Fallback: insert at beginning
-  return toc + '\n\n' + markdown;
+  return toc + '\n\n' + cleaned;
+}
+
+/**
+ * Remove any existing Table of Contents sections from markdown
+ * Handles LLM-generated TOCs that would duplicate with our generated one
+ */
+function removeExistingTOC(markdown: string): string {
+  // Match "## Table of Contents" followed by a list of links, until next H2 or end
+  // This pattern matches the TOC header + all lines that are TOC links (- [...] or  - [...])
+  const tocPattern = /\n*## Table of Contents\n+((?:\s*-\s+\[.*?\]\(#.*?\)\n*)*)/gi;
+
+  let result = markdown;
+  let matchFound = true;
+
+  // Remove all occurrences (there might be multiple)
+  while (matchFound) {
+    const newResult = result.replace(tocPattern, '\n');
+    matchFound = newResult !== result;
+    result = newResult;
+  }
+
+  // Clean up excessive blank lines left after removal
+  result = result.replace(/\n{4,}/g, '\n\n\n');
+
+  return result;
 }
 
 export function addAnchorsToHeadings(markdown: string): string {
