@@ -2,7 +2,9 @@ import { prisma } from '@/lib/prisma';
 import { generateTitles, TitleGeneratorOutput } from './title-generator';
 import { generateContent, ContentGeneratorOutput } from './content-generator';
 import { analyzeSEO, SEOAnalysis } from './seo-optimizer';
+import { processImages } from './image-pipeline';
 import { insertTOC } from '@/lib/toc-generator';
+import { insertImagesIntoMarkdown } from '@/lib/image-inserter';
 import { BlogType, BlogOutput, Platform } from '@/types';
 import { logger } from '@/lib/logger';
 
@@ -49,7 +51,7 @@ export async function createBlogDraft(input: CreateBlogInput): Promise<{ id: str
   };
 }
 
-// Step 2: Generate content for blog
+// Step 2: Generate content for blog (with auto image generation)
 export async function generateBlogContent(input: GenerateBlogInput): Promise<BlogOrchestrationResult> {
   const { blogId, title } = input;
 
@@ -64,7 +66,8 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
     throw new Error(`Blog not found: ${blogId}`);
   }
 
-  // Generate content
+  // Step 2a: Generate content
+  logger.info('Step 2a: Generating text content', { blogId });
   const contentResult = await generateContent({
     keyword: blog.keyword,
     blogType: blog.blogType as BlogType,
@@ -72,17 +75,67 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
   });
 
   // Insert TOC after intro
-  const contentWithTOC = insertTOC(contentResult.content, 'TL;DR');
+  let finalContent = insertTOC(contentResult.content, 'TL;DR');
 
-  // Analyze SEO
-  const seoAnalysis = analyzeSEO(contentWithTOC, blog.keyword, title);
+  // Step 2b: Auto-generate images based on keyword, title, and content
+  logger.info('Step 2b: Auto-generating images', { blogId });
+  let generatedImages: {
+    id: string;
+    prompt: string;
+    s3Url: string;
+    altText: string;
+    placement: string;
+    sectionId?: string;
+  }[] = [];
 
-  // Update blog in database
+  try {
+    generatedImages = await processImages(
+      {
+        id: blogId,
+        title,
+        keyword: blog.keyword,
+        blogType: blog.blogType as BlogType,
+        content: finalContent,
+      },
+      3 // Generate 3 images: hero, after_intro, in_section
+    );
+
+    logger.info('Images generated successfully', {
+      blogId,
+      imageCount: generatedImages.length,
+    });
+
+    // Step 2c: Insert images into the markdown content at the right positions
+    if (generatedImages.length > 0) {
+      finalContent = insertImagesIntoMarkdown(
+        finalContent,
+        generatedImages.map((img) => ({
+          url: img.s3Url,
+          altText: img.altText,
+          placement: img.placement,
+          sectionId: img.sectionId,
+        }))
+      );
+
+      logger.info('Images inserted into content', { blogId });
+    }
+  } catch (imageError) {
+    // Image generation is non-blocking - log error and continue with content
+    logger.error('Auto image generation failed (continuing without images)', {
+      blogId,
+      error: String(imageError),
+    });
+  }
+
+  // Analyze SEO (on final content with images)
+  const seoAnalysis = analyzeSEO(finalContent, blog.keyword, title);
+
+  // Update blog in database with final content (including image references)
   const updatedBlog = await prisma.blog.update({
     where: { id: blogId },
     data: {
       title,
-      content: contentWithTOC,
+      content: finalContent,
       metaDescription: contentResult.metaDescription,
       focusKeyword: blog.keyword,
       status: 'review',
@@ -94,7 +147,11 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
     },
   });
 
-  logger.info('Blog content generated', { blogId, seoScore: seoAnalysis.score });
+  logger.info('Blog content generated with images', {
+    blogId,
+    seoScore: seoAnalysis.score,
+    imageCount: updatedBlog.images.length,
+  });
 
   const blogOutput: BlogOutput = {
     id: updatedBlog.id,
@@ -129,7 +186,7 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
       altText: i.altText,
       placement: i.placement as 'hero' | 'after_intro' | 'in_section',
     })),
-    publishRecords: updatedBlog.publishRecords.map((p) => ({
+    publishRecords: (updatedBlog.publishRecords || []).map((p) => ({
       platform: p.platform as Platform,
       publishedUrl: p.publishedUrl || undefined,
       publishedAt: p.publishedAt?.toISOString(),

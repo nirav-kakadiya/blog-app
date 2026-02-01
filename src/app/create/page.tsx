@@ -7,18 +7,20 @@ import { TitleSelector } from '@/components/TitleSelector';
 import { EditorLayout } from '@/components/Editor';
 import { BlogType } from '@/types';
 
-type Step = 'input' | 'titles' | 'content';
+type Step = 'input' | 'titles' | 'generating' | 'content';
 
 const STEPS = [
   { key: 'input' as const, label: 'Topic', icon: '1' },
   { key: 'titles' as const, label: 'Title', icon: '2' },
-  { key: 'content' as const, label: 'Edit', icon: '3' },
+  { key: 'generating' as const, label: 'Generate', icon: '3' },
+  { key: 'content' as const, label: 'Edit', icon: '4' },
 ];
 
 export default function CreateBlogPage() {
   const [step, setStep] = useState<Step>('input');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generationPhase, setGenerationPhase] = useState<string>('');
   const [blogData, setBlogData] = useState<{
     id?: string;
     keyword?: string;
@@ -26,6 +28,7 @@ export default function CreateBlogPage() {
     titles?: string[];
     selectedTitle?: string;
     content?: string;
+    imageCount?: number;
   }>({});
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -69,7 +72,15 @@ export default function CreateBlogPage() {
 
   const handleTitleSelect = async (title: string) => {
     setLoading(true);
+    setError(null);
+    setBlogData((prev) => ({ ...prev, selectedTitle: title }));
+
+    // Show the generation step with progress
+    setStep('generating');
+    setGenerationPhase('Writing blog content...');
+
     try {
+      // This single API call now handles: content generation + image generation + image insertion
       const res = await fetch('/api/blogs/generate-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,17 +92,22 @@ export default function CreateBlogPage() {
 
       // Safely extract content with fallbacks
       const content = result?.data?.blog?.content?.markdown ?? result?.data?.content?.markdown ?? '';
+      const imageCount = result?.data?.blog?.images?.length ?? 0;
 
       setBlogData((prev) => ({
         ...prev,
         selectedTitle: title,
         content,
+        imageCount,
       }));
       setStep('content');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      // Go back to titles step on error
+      setStep('titles');
     } finally {
       setLoading(false);
+      setGenerationPhase('');
     }
   };
 
@@ -297,7 +313,54 @@ export default function CreateBlogPage() {
           </div>
         )}
 
-        {/* Step 3: Content Editor */}
+        {/* Step 3: Generation Progress */}
+        {step === 'generating' && (
+          <div className="max-w-2xl mx-auto px-4 py-20 animate-fadeIn">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-8">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-3">Creating Your Blog</h1>
+              <p className="text-lg text-gray-600 mb-8">{blogData.selectedTitle}</p>
+
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
+                <div className="space-y-6">
+                  {/* Phase indicators */}
+                  <GenerationStep
+                    label="Generating blog content"
+                    description="Writing SEO-optimized article with GPT-4o"
+                    active={generationPhase.includes('content') || generationPhase === ''}
+                    done={generationPhase.includes('image') || generationPhase.includes('insert') || generationPhase.includes('SEO')}
+                  />
+                  <GenerationStep
+                    label="Creating image prompts"
+                    description="Designing prompts based on your keyword and title"
+                    active={generationPhase.includes('prompt')}
+                    done={generationPhase.includes('Generating image') || generationPhase.includes('insert') || generationPhase.includes('SEO')}
+                  />
+                  <GenerationStep
+                    label="Generating images"
+                    description="Creating visuals with Imagen 3 AI"
+                    active={generationPhase.includes('Generating image') || generationPhase.includes('Uploading')}
+                    done={generationPhase.includes('insert') || generationPhase.includes('SEO')}
+                  />
+                  <GenerationStep
+                    label="Inserting images & SEO analysis"
+                    description="Placing images in content and analyzing SEO"
+                    active={generationPhase.includes('insert') || generationPhase.includes('SEO')}
+                    done={false}
+                  />
+                </div>
+
+                <p className="text-sm text-gray-400 mt-8">
+                  This may take a minute. Your blog is being crafted with care.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Content Editor */}
         {step === 'content' && blogData.content && (
           <div className="h-full flex flex-col animate-fadeIn">
             <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -308,6 +371,12 @@ export default function CreateBlogPage() {
                     <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium capitalize">{blogData.blogType}</span>
                     <span className="text-gray-300">|</span>
                     <span>{blogData.keyword}</span>
+                    {(blogData.imageCount ?? 0) > 0 && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <span className="text-green-600">{blogData.imageCount} images</span>
+                      </>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -330,6 +399,46 @@ export default function CreateBlogPage() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function GenerationStep({
+  label,
+  description,
+  active,
+  done,
+}: {
+  label: string;
+  description: string;
+  active: boolean;
+  done: boolean;
+}) {
+  return (
+    <div className={`flex items-start gap-4 transition-opacity ${!active && !done ? 'opacity-40' : ''}`}>
+      <div className="flex-shrink-0 mt-0.5">
+        {done ? (
+          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        ) : active ? (
+          <div className="w-6 h-6 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+            <div className="w-2 h-2 bg-gray-300 rounded-full" />
+          </div>
+        )}
+      </div>
+      <div>
+        <p className={`text-sm font-medium ${done ? 'text-green-700' : active ? 'text-blue-700' : 'text-gray-500'}`}>
+          {label}
+        </p>
+        <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+      </div>
     </div>
   );
 }
