@@ -1,10 +1,21 @@
-import { gemini } from '@/lib/gemini';
+import { gemini, type ImageModel } from '@/lib/gemini';
 import { r2 } from '@/lib/r2';
 import { prisma } from '@/lib/prisma';
 import { generateImagePrompts, ImagePromptResult } from './image-prompt-generator';
 import { generateAltText } from './alt-text-generator';
 import { BlogType } from '@/types';
 import { logger } from '@/lib/logger';
+
+/**
+ * Get the appropriate model and aspect ratio for image placement
+ * Hero images use 16:9 landscape, in-content images use 4:3
+ */
+function getImageConfig(placement: string): { model: ImageModel; aspectRatio: '16:9' | '4:3' | '3:2' } {
+  if (placement === 'hero') {
+    return { model: 'gemini-2.5-flash-image', aspectRatio: '16:9' };
+  }
+  return { model: 'gemini-2.5-flash-image', aspectRatio: '4:3' };
+}
 
 interface BlogContext {
   id: string;
@@ -74,10 +85,11 @@ export async function processImages(
           message: `Generating image ${i + 1} of ${prompts.length}...`,
         });
 
+        const config = getImageConfig(prompt.placement);
         const { imageData, mimeType } = await gemini.generateImage({
           prompt: prompt.prompt,
-          width: prompt.placement === 'hero' ? 1920 : 1280,
-          height: prompt.placement === 'hero' ? 1080 : 720,
+          model: config.model,
+          aspectRatio: config.aspectRatio,
         });
 
         // Stage 3: Upload to R2
@@ -179,10 +191,11 @@ export async function processingleImage(
     message: 'Generating image...',
   });
 
+  const config = getImageConfig(prompt.placement);
   const { imageData, mimeType } = await gemini.generateImage({
     prompt: prompt.prompt,
-    width: prompt.placement === 'hero' ? 1920 : 1280,
-    height: prompt.placement === 'hero' ? 1080 : 720,
+    model: config.model,
+    aspectRatio: config.aspectRatio,
   });
 
   onProgress?.({
@@ -262,10 +275,11 @@ export async function regenerateImage(
   }
 
   // Generate new image
+  const config = getImageConfig(existingImage.placement);
   const { imageData, mimeType } = await gemini.generateImage({
     prompt,
-    width: existingImage.placement === 'hero' ? 1920 : 1280,
-    height: existingImage.placement === 'hero' ? 1080 : 720,
+    model: config.model,
+    aspectRatio: config.aspectRatio,
   });
 
   // Upload new image

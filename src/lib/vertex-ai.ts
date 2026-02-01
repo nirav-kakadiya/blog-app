@@ -5,14 +5,25 @@ import { retry, isRetryableError } from './retry';
 import * as path from 'path';
 import * as fs from 'fs';
 
-interface GenerateImageOptions {
+/**
+ * Supported Gemini image generation models via Vertex AI
+ *
+ * gemini-2.5-flash-image  — Nano Banana (fast, cost-effective)
+ * gemini-3-pro-image-preview — Nano Banana Pro (highest quality, 4K support)
+ */
+export type ImageModel = 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview';
+
+export type AspectRatio =
+  | '1:1' | '3:2' | '2:3' | '3:4' | '4:3'
+  | '4:5' | '5:4' | '9:16' | '16:9' | '21:9';
+
+export interface GenerateImageOptions {
   prompt: string;
-  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
-  numberOfImages?: number;
-  negativePrompt?: string;
+  model?: ImageModel;
+  aspectRatio?: AspectRatio;
 }
 
-interface GenerateImageResponse {
+export interface GenerateImageResponse {
   imageData: Buffer;
   mimeType: string;
 }
@@ -20,19 +31,17 @@ interface GenerateImageResponse {
 interface VertexAIConfig {
   projectId: string;
   location: string;
-  model: string;
 }
 
 /**
  * Vertex AI Image Generation Client
- * Uses Imagen model through Vertex AI with service account authentication
+ * Uses Gemini image models (generateContent API) with service account authentication
  */
 class VertexAIImageClient {
   private auth: GoogleAuth | null = null;
   private config: VertexAIConfig = {
-    projectId: 'tough-octane-485509-c8',
-    location: 'us-central1',
-    model: 'imagen-3.0-generate-001', // Imagen 3 model
+    projectId: process.env.VERTEX_AI_PROJECT || 'tough-octane-485509-c8',
+    location: process.env.VERTEX_AI_LOCATION || 'us-central1',
   };
 
   /**
@@ -43,7 +52,6 @@ class VertexAIImageClient {
       return this.auth;
     }
 
-    // Try to find credentials file
     const credentialsPath = this.findCredentialsFile();
 
     if (!credentialsPath) {
@@ -68,11 +76,8 @@ class VertexAIImageClient {
    */
   private findCredentialsFile(): string | null {
     const possiblePaths = [
-      // Project root
       path.join(process.cwd(), 'google-credentials.json'),
-      // Environment variable path
       process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      // Relative to this file
       path.join(__dirname, '../../google-credentials.json'),
       path.join(__dirname, '../../../google-credentials.json'),
     ].filter(Boolean) as string[];
@@ -106,17 +111,20 @@ class VertexAIImageClient {
   }
 
   /**
-   * Generate image using Vertex AI Imagen
+   * Generate image using Vertex AI Gemini image models (generateContent API)
+   *
+   * Primary:  gemini-2.5-flash-image (Nano Banana — fast, cheap)
+   * Fallback: gemini-3-pro-image-preview (Nano Banana Pro — highest quality)
    */
   async generateImage(options: GenerateImageOptions): Promise<GenerateImageResponse> {
     const {
       prompt,
+      model = 'gemini-2.5-flash-image',
       aspectRatio = '16:9',
-      numberOfImages = 1,
-      negativePrompt,
     } = options;
 
-    logger.info('Vertex AI image generation request', {
+    logger.info('Vertex AI generateContent image request', {
+      model,
       prompt: prompt.substring(0, 100),
       aspectRatio,
     });
@@ -126,31 +134,28 @@ class VertexAIImageClient {
         async () => {
           const accessToken = await this.getAccessToken();
 
-          // Vertex AI Imagen endpoint
-          const endpoint = `https://${this.config.location}-aiplatform.googleapis.com/v1/projects/${this.config.projectId}/locations/${this.config.location}/publishers/google/models/${this.config.model}:predict`;
+          // Vertex AI generateContent endpoint
+          const endpoint = `https://${this.config.location}-aiplatform.googleapis.com/v1/projects/${this.config.projectId}/locations/${this.config.location}/publishers/google/models/${model}:generateContent`;
 
-          // Build the request payload for Imagen
-          const payload: {
-            instances: { prompt: string; negativePrompt?: string }[];
-            parameters: { sampleCount: number; aspectRatio: string; safetyFilterLevel: string; personGeneration: string };
-          } = {
-            instances: [
+          // Build generateContent request payload
+          const payload = {
+            contents: [
               {
-                prompt: prompt,
+                role: 'user',
+                parts: [
+                  {
+                    text: `Generate a high-quality professional image: ${prompt}. Do not include any text, watermarks, or logos in the image.`,
+                  },
+                ],
               },
             ],
-            parameters: {
-              sampleCount: numberOfImages,
-              aspectRatio: aspectRatio,
-              safetyFilterLevel: 'block_few', // block_none, block_few, block_some, block_most
-              personGeneration: 'allow_adult', // allow_adult, dont_allow
+            generationConfig: {
+              responseModalities: ['TEXT', 'IMAGE'],
+              imageConfig: {
+                aspectRatio,
+              },
             },
           };
-
-          // Add negative prompt if provided
-          if (negativePrompt) {
-            payload.instances[0].negativePrompt = negativePrompt;
-          }
 
           const res = await fetch(endpoint, {
             method: 'POST',
@@ -165,6 +170,7 @@ class VertexAIImageClient {
             const errorText = await res.text();
             logger.error('Vertex AI API error response', {
               status: res.status,
+              model,
               error: errorText,
             });
             throw new Error(`Vertex AI API error: ${res.status} ${errorText}`);
@@ -178,28 +184,36 @@ class VertexAIImageClient {
         }
       );
 
-      // Extract image data from response
-      const predictions = response.predictions;
+      // Extract image data from generateContent response
+      // Response format: candidates[0].content.parts[] → { inlineData: { mimeType, data } } or { text }
+      const parts = response.candidates?.[0]?.content?.parts;
 
-      if (!predictions || predictions.length === 0) {
-        throw new APIError('No image generated by Vertex AI', 'vertex-ai');
+      if (!parts || !Array.isArray(parts)) {
+        throw new APIError('No content parts in Vertex AI response', 'vertex-ai');
       }
 
-      // Imagen returns base64 encoded image
-      const imageBase64 = predictions[0].bytesBase64Encoded;
+      // Find the image part (there may be text parts too)
+      const imagePart = parts.find(
+        (p: { inlineData?: { data: string; mimeType: string } }) => p.inlineData?.data
+      );
 
-      if (!imageBase64) {
-        throw new APIError('No image data in Vertex AI response', 'vertex-ai');
+      if (!imagePart?.inlineData) {
+        const partTypes = parts.map(
+          (p: { text?: string; inlineData?: unknown }) =>
+            p.text ? 'text' : p.inlineData ? 'image' : 'unknown'
+        );
+        logger.error('No image data in Vertex AI response parts', { partTypes, model });
+        throw new APIError(`No image data in Vertex AI response (got: ${partTypes.join(', ')})`, 'vertex-ai');
       }
 
-      logger.info('Vertex AI image generation success');
+      logger.info('Vertex AI image generation success', { model });
 
       return {
-        imageData: Buffer.from(imageBase64, 'base64'),
-        mimeType: 'image/png',
+        imageData: Buffer.from(imagePart.inlineData.data, 'base64'),
+        mimeType: imagePart.inlineData.mimeType || 'image/png',
       };
     } catch (error) {
-      logger.error('Vertex AI image generation error', { error: String(error) });
+      logger.error('Vertex AI image generation error', { error: String(error), model });
 
       if (error instanceof APIError) {
         throw error;
@@ -214,6 +228,3 @@ class VertexAIImageClient {
 }
 
 export const vertexAI = new VertexAIImageClient();
-
-// Export types for compatibility with existing code
-export type { GenerateImageOptions, GenerateImageResponse };

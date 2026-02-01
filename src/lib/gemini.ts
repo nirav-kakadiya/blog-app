@@ -1,10 +1,12 @@
 import { retry, isRetryableError } from './retry';
 import { APIError } from './errors';
 import { logger } from './logger';
-import { vertexAI } from './vertex-ai';
+import { vertexAI, type ImageModel, type AspectRatio } from './vertex-ai';
 
-interface GenerateImageOptions {
+export interface GenerateImageOptions {
   prompt: string;
+  model?: ImageModel;
+  aspectRatio?: AspectRatio;
   width?: number;
   height?: number;
 }
@@ -16,7 +18,9 @@ interface GenerateImageResponse {
 
 /**
  * Unified Image Generation Client
- * Uses Vertex AI (Imagen) by default, falls back to Gemini API if needed
+ *
+ * Primary:  Vertex AI with service account (gemini-2.5-flash-image)
+ * Fallback: Gemini API with API key (same model via generativelanguage.googleapis.com)
  */
 class GeminiClient {
   private apiKey: string | null = null;
@@ -34,9 +38,9 @@ class GeminiClient {
   }
 
   /**
-   * Convert width/height to aspect ratio for Vertex AI
+   * Convert width/height to aspect ratio
    */
-  private getAspectRatio(width: number, height: number): '1:1' | '16:9' | '9:16' | '4:3' | '3:4' {
+  private getAspectRatio(width: number, height: number): AspectRatio {
     const ratio = width / height;
 
     if (Math.abs(ratio - 1) < 0.1) return '1:1';
@@ -44,31 +48,29 @@ class GeminiClient {
     if (Math.abs(ratio - 9 / 16) < 0.2) return '9:16';
     if (Math.abs(ratio - 4 / 3) < 0.2) return '4:3';
     if (Math.abs(ratio - 3 / 4) < 0.2) return '3:4';
+    if (Math.abs(ratio - 3 / 2) < 0.2) return '3:2';
+    if (Math.abs(ratio - 2 / 3) < 0.2) return '2:3';
 
-    // Default to 16:9 for wider images, 9:16 for taller
     return ratio > 1 ? '16:9' : '9:16';
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GenerateImageResponse> {
     const {
       prompt,
+      model = 'gemini-2.5-flash-image',
       width = 1024,
       height = 1024,
     } = options;
 
-    // Try Vertex AI first (uses service account credentials) unless too many recent failures
+    const aspectRatio = options.aspectRatio || this.getAspectRatio(width, height);
+
+    // Try Vertex AI first (service account auth) unless too many recent failures
     if (this.vertexAIFailCount < this.MAX_VERTEX_FAILURES) {
       try {
-        logger.info('Using Vertex AI (Imagen) for image generation', {
-          prompt: prompt.substring(0, 100),
-        });
-
-        const aspectRatio = this.getAspectRatio(width, height);
-
         const result = await vertexAI.generateImage({
           prompt,
+          model,
           aspectRatio,
-          negativePrompt: 'blurry, low quality, distorted, watermark, text, logo',
         });
 
         // Reset fail count on success
@@ -78,36 +80,35 @@ class GeminiClient {
         this.vertexAIFailCount++;
         logger.warn('Vertex AI failed, falling back to Gemini API', {
           error: String(vertexError),
+          model,
           failCount: this.vertexAIFailCount,
         });
       }
     }
 
-    // Fallback to Gemini API with image-capable model
-    return this.generateImageWithGeminiAPI({ prompt, width, height });
+    // Fallback to Gemini API (API key auth) — same model, different endpoint
+    return this.generateImageWithGeminiAPI({ prompt, model, aspectRatio });
   }
 
   /**
-   * Generate image using Gemini API (fallback method)
-   * Uses gemini-2.0-flash-exp which supports native image generation
+   * Fallback: Generate image using Gemini API (API key auth)
+   * Uses the same generateContent format as Vertex AI
    */
-  private async generateImageWithGeminiAPI(options: { prompt: string; width?: number; height?: number }): Promise<GenerateImageResponse> {
-    const {
-      prompt,
-      width = 1024,
-      height = 1024,
-    } = options;
+  private async generateImageWithGeminiAPI(options: {
+    prompt: string;
+    model: ImageModel;
+    aspectRatio: AspectRatio;
+  }): Promise<GenerateImageResponse> {
+    const { prompt, model, aspectRatio } = options;
 
-    // gemini-2.0-flash-exp supports image output via responseModalities
-    const model = 'gemini-2.0-flash-exp';
-
-    logger.info('Gemini API image generation request', { model, prompt: prompt.substring(0, 100) });
+    logger.info('Gemini API image generation (fallback)', { model, prompt: prompt.substring(0, 100) });
 
     try {
       const response = await retry(
         async () => {
           const apiKey = this.getApiKey();
 
+          // Gemini API endpoint (same generateContent format as Vertex AI)
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
           const res = await fetch(endpoint, {
@@ -120,14 +121,16 @@ class GeminiClient {
                 {
                   parts: [
                     {
-                      text: `Generate a high-quality professional image: ${prompt}. Do not include any text or watermarks in the image.`,
+                      text: `Generate a high-quality professional image: ${prompt}. Do not include any text, watermarks, or logos in the image.`,
                     },
                   ],
                 },
               ],
               generationConfig: {
-                responseModalities: ['IMAGE', 'TEXT'],
-                temperature: 1,
+                responseModalities: ['TEXT', 'IMAGE'],
+                imageConfig: {
+                  aspectRatio,
+                },
               },
             }),
           });
@@ -145,23 +148,29 @@ class GeminiClient {
         }
       );
 
-      // Extract image data from response — may be in any part
+      // Same response format as Vertex AI: candidates[0].content.parts[]
       const parts = response.candidates?.[0]?.content?.parts || [];
-      const imagePart = parts.find((p: { inlineData?: { data: string; mimeType: string } }) => p.inlineData?.data);
+      const imagePart = parts.find(
+        (p: { inlineData?: { data: string; mimeType: string } }) => p.inlineData?.data
+      );
 
       if (!imagePart?.inlineData) {
-        logger.error('No image data in Gemini response', { parts: parts.map((p: { text?: string; inlineData?: unknown }) => p.text ? 'text' : p.inlineData ? 'image' : 'unknown') });
-        throw new APIError('No image data in Gemini response', 'gemini');
+        const partTypes = parts.map(
+          (p: { text?: string; inlineData?: unknown }) =>
+            p.text ? 'text' : p.inlineData ? 'image' : 'unknown'
+        );
+        logger.error('No image data in Gemini API response', { partTypes, model });
+        throw new APIError(`No image data in Gemini response (got: ${partTypes.join(', ')})`, 'gemini');
       }
 
-      logger.info('Gemini image generation success');
+      logger.info('Gemini API image generation success', { model });
 
       return {
         imageData: Buffer.from(imagePart.inlineData.data, 'base64'),
         mimeType: imagePart.inlineData.mimeType || 'image/png',
       };
     } catch (error) {
-      logger.error('Gemini image generation error', { error: String(error) });
+      logger.error('Gemini API image generation error', { error: String(error), model });
       throw new APIError(
         error instanceof Error ? error.message : 'Gemini image generation failed',
         'gemini'
@@ -172,8 +181,5 @@ class GeminiClient {
 
 export const gemini = new GeminiClient();
 
-// Model aliases for user-friendly names
-export const IMAGE_MODELS = {
-  'gemini-flash': 'gemini-2.0-flash-exp',
-  'imagen-3': 'imagen-3.0-generate-001',
-} as const;
+// Re-export types for external use
+export type { ImageModel, AspectRatio, GenerateImageResponse };
