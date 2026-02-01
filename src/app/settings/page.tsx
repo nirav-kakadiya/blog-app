@@ -140,6 +140,10 @@ export default function SettingsPage() {
 
   const handleUpdateProfile = async (updates: Partial<BrandProfile>) => {
     if (!activeProfile) return;
+
+    // Optimistic update — instant UI feedback
+    setActiveProfile(prev => prev ? { ...prev, ...updates } : prev);
+
     setSaving(true);
     try {
       const res = await fetch(`/api/brand-profile/${activeProfile.id}`, {
@@ -150,10 +154,13 @@ export default function SettingsPage() {
       const data = await res.json();
       if (data.success) {
         setActiveProfile(data.data);
-        showMessage('success', 'Profile updated');
-        await fetchProfiles();
+        fetchProfiles(); // no await — background refresh
+      } else {
+        // Revert on failure
+        setActiveProfile(activeProfile);
       }
     } catch {
+      setActiveProfile(activeProfile); // Revert on error
       showMessage('error', 'Failed to update profile');
     } finally {
       setSaving(false);
