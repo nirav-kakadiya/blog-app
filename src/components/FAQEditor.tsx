@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/hooks/useToast';
 
 interface FAQ {
   id: string;
@@ -28,6 +30,8 @@ export function FAQEditor({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const toast = useToast();
 
   const updateFaqs = useCallback((newFaqs: FAQ[]) => {
     setFaqs(newFaqs);
@@ -65,18 +69,22 @@ export function FAQEditor({
 
   const handleDelete = (id: string) => {
     if (faqs.length <= minFaqs) {
-      alert(`Minimum ${minFaqs} FAQs required`);
+      toast.warning(`Minimum ${minFaqs} FAQs required`);
       return;
     }
-    if (confirm('Are you sure you want to delete this FAQ?')) {
-      const newFaqs = faqs.filter((faq) => faq.id !== id);
-      updateFaqs(newFaqs);
-    }
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteConfirmId) return;
+    const newFaqs = faqs.filter((faq) => faq.id !== deleteConfirmId);
+    updateFaqs(newFaqs);
+    setDeleteConfirmId(null);
   };
 
   const handleAdd = () => {
     if (faqs.length >= maxFaqs) {
-      alert(`Maximum ${maxFaqs} FAQs allowed`);
+      toast.warning(`Maximum ${maxFaqs} FAQs allowed`);
       return;
     }
     const newFaq: FAQ = {
@@ -269,6 +277,16 @@ export function FAQEditor({
           ))
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+        title="Delete FAQ"
+        description="Are you sure you want to delete this FAQ?"
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

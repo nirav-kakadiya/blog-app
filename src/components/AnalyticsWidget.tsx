@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PLATFORM_ICONS } from '@/components/ui/icons';
+import { FileText, CheckCircle, Globe, BarChart3, ExternalLink, AlertCircle } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface PlatformStats {
   platform: string;
@@ -73,9 +76,7 @@ export function AnalyticsWidget({ blogId, showAllBlogs = false }: Props) {
     return (
       <div className="bg-white rounded-xl border border-red-200 p-6">
         <div className="flex items-center gap-2 text-red-600">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <AlertCircle className="w-5 h-5" />
           <span className="text-sm">{error}</span>
         </div>
       </div>
@@ -115,9 +116,7 @@ export function AnalyticsWidget({ blogId, showAllBlogs = false }: Props) {
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-700"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
+                      <ExternalLink className="w-4 h-4" />
                     </a>
                   )}
                 </div>
@@ -150,13 +149,13 @@ export function AnalyticsWidget({ blogId, showAllBlogs = false }: Props) {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Publishing Analytics</h3>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <StatCard label="Total Blogs" value={allAnalytics.length} icon="📝" />
-          <StatCard label="Published" value={totalPublished} icon="✅" />
-          <StatCard label="Platforms" value={Object.keys(platformCounts).length} icon="🌐" />
+          <StatCard label="Total Blogs" value={allAnalytics.length} icon={FileText} />
+          <StatCard label="Published" value={totalPublished} icon={CheckCircle} />
+          <StatCard label="Platforms" value={Object.keys(platformCounts).length} icon={Globe} />
           <StatCard
             label="Avg Per Blog"
             value={(totalPublished / Math.max(allAnalytics.length, 1)).toFixed(1)}
-            icon="📊"
+            icon={BarChart3}
           />
         </div>
 
@@ -184,11 +183,11 @@ export function AnalyticsWidget({ blogId, showAllBlogs = false }: Props) {
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string | number; icon: string }) {
+function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: LucideIcon }) {
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-2xl">{icon}</span>
+        <Icon className="w-5 h-5 text-gray-400" />
       </div>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
@@ -213,18 +212,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function PlatformIcon({ platform, size = 'md' }: { platform: string; size?: 'sm' | 'md' }) {
-  const icons: Record<string, string> = {
-    medium: '📰',
-    devto: '👩‍💻',
-    linkedin: '💼',
-    wordpress: '📝',
-    ghost: '👻',
-    hashnode: '#️⃣',
-    quora: '❓',
-    reddit: '🔴',
-  };
+  const Icon = PLATFORM_ICONS[platform] || Globe;
+  const sizeClass = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
 
-  const sizeClass = size === 'sm' ? 'text-base' : 'text-xl';
-
-  return <span className={sizeClass}>{icons[platform] || '📄'}</span>;
+  return <Icon className={`${sizeClass} text-gray-500`} />;
 }

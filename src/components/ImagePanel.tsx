@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface BlogImage {
   id: string;
@@ -41,6 +42,7 @@ export function ImagePanel({
   const [showNewPromptForm, setShowNewPromptForm] = useState(false);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const handleRegenerate = useCallback(async (imageId: string, prompt?: string) => {
     if (!onRegenerate) return;
@@ -52,16 +54,16 @@ export function ImagePanel({
     }
   }, [onRegenerate]);
 
-  const handleDelete = useCallback(async (imageId: string) => {
-    if (!onDelete) return;
-    if (!confirm('Delete this image?')) return;
-    setDeletingId(imageId);
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!onDelete || !deleteConfirmId) return;
+    setDeletingId(deleteConfirmId);
+    setDeleteConfirmId(null);
     try {
-      await onDelete(imageId);
+      await onDelete(deleteConfirmId);
     } finally {
       setDeletingId(null);
     }
-  }, [onDelete]);
+  }, [onDelete, deleteConfirmId]);
 
   const handleUpdateAltText = useCallback(async (imageId: string, altText: string) => {
     if (!onUpdateAltText) return;
@@ -234,7 +236,7 @@ export function ImagePanel({
             )}
             {onDelete && (
               <button
-                onClick={() => handleDelete(selectedImage.id)}
+                onClick={() => setDeleteConfirmId(selectedImage.id)}
                 disabled={deletingId === selectedImage.id}
                 className="px-3 py-1.5 text-red-600 text-sm hover:bg-red-50 rounded disabled:opacity-50"
               >
@@ -244,6 +246,16 @@ export function ImagePanel({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirmId(null)}
+        title="Delete Image"
+        description="This image will be permanently deleted."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

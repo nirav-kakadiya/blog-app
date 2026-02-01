@@ -2,18 +2,21 @@
 
 import { useState } from 'react';
 import { BlogType } from '@/types';
+import { BLOG_TYPE_ICONS } from '@/components/ui/icons';
+import { Search, Zap, CheckCircle, Loader2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-const BLOG_TYPES: { value: BlogType; label: string; description: string; icon: string }[] = [
-  { value: 'guide', label: 'Guide', description: 'How-to tutorials and comprehensive guides', icon: '📚' },
-  { value: 'prompt', label: 'Prompts', description: 'AI prompt libraries and templates', icon: '✨' },
-  { value: 'comparison', label: 'Comparison', description: 'Tool comparisons and alternatives', icon: '⚖️' },
-  { value: 'tips', label: 'Tips & Tricks', description: 'Quick tutorials and pro tips', icon: '💡' },
-  { value: 'usecase', label: 'Use Cases', description: 'Industry-specific use cases', icon: '🎯' },
-  { value: 'api', label: 'API Guide', description: 'API documentation and integration guides', icon: '🔌' },
-  { value: 'upcoming', label: 'Upcoming/Trends', description: 'News about upcoming releases', icon: '🚀' },
-  { value: 'troubleshoot', label: 'Troubleshooting', description: 'Error fixes and debugging guides', icon: '🔧' },
-  { value: 'tools', label: 'Tools & Models', description: 'Deep-dive articles on specific tools', icon: '🛠️' },
-  { value: 'review', label: 'Review', description: 'In-depth tool or model reviews', icon: '⭐' },
+const BLOG_TYPES: { value: BlogType; label: string; description: string; icon: LucideIcon }[] = [
+  { value: 'guide', label: 'Guide', description: 'How-to tutorials and comprehensive guides', icon: BLOG_TYPE_ICONS.guide },
+  { value: 'prompt', label: 'Prompts', description: 'AI prompt libraries and templates', icon: BLOG_TYPE_ICONS.prompt },
+  { value: 'comparison', label: 'Comparison', description: 'Tool comparisons and alternatives', icon: BLOG_TYPE_ICONS.comparison },
+  { value: 'tips', label: 'Tips & Tricks', description: 'Quick tutorials and pro tips', icon: BLOG_TYPE_ICONS.tips },
+  { value: 'usecase', label: 'Use Cases', description: 'Industry-specific use cases', icon: BLOG_TYPE_ICONS.usecase },
+  { value: 'api', label: 'API Guide', description: 'API documentation and integration guides', icon: BLOG_TYPE_ICONS.api },
+  { value: 'upcoming', label: 'Upcoming/Trends', description: 'News about upcoming releases', icon: BLOG_TYPE_ICONS.upcoming },
+  { value: 'troubleshoot', label: 'Troubleshooting', description: 'Error fixes and debugging guides', icon: BLOG_TYPE_ICONS.troubleshoot },
+  { value: 'tools', label: 'Tools & Models', description: 'Deep-dive articles on specific tools', icon: BLOG_TYPE_ICONS.tools },
+  { value: 'review', label: 'Review', description: 'In-depth tool or model reviews', icon: BLOG_TYPE_ICONS.review },
 ];
 
 interface Props {
@@ -53,9 +56,7 @@ export function BlogInputForm({ onSubmit, loading = false }: Props) {
         </label>
         <div className="relative">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <Search className="w-5 h-5" />
           </div>
           <input
             id="keyword"
@@ -78,35 +79,36 @@ export function BlogInputForm({ onSubmit, loading = false }: Props) {
           Blog Type
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          {BLOG_TYPES.map((type) => (
-            <button
-              key={type.value}
-              type="button"
-              onClick={() => setBlogType(type.value)}
-              disabled={loading}
-              className={`relative flex flex-col items-center p-4 rounded-xl border-2 transition-all ${
-                blogType === type.value
-                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <span className="text-2xl mb-2">{type.icon}</span>
-              <span className={`text-sm font-medium ${blogType === type.value ? 'text-blue-700' : 'text-gray-700'}`}>
-                {type.label}
-              </span>
-              {blogType === type.value && (
-                <div className="absolute top-2 right-2">
-                  <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              )}
-            </button>
-          ))}
+          {BLOG_TYPES.map((type) => {
+            const Icon = type.icon;
+            return (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => setBlogType(type.value)}
+                disabled={loading}
+                className={`relative flex flex-col items-center p-4 rounded-xl border-2 transition-all ${
+                  blogType === type.value
+                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Icon className={`w-6 h-6 mb-2 ${blogType === type.value ? 'text-blue-600' : 'text-gray-500'}`} />
+                <span className={`text-sm font-medium ${blogType === type.value ? 'text-blue-700' : 'text-gray-700'}`}>
+                  {type.label}
+                </span>
+                {blogType === type.value && (
+                  <div className="absolute top-2 right-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
         {selectedType && (
           <p className="mt-3 text-sm text-gray-500 flex items-center gap-2">
-            <span className="text-lg">{selectedType.icon}</span>
+            {(() => { const Icon = selectedType.icon; return <Icon className="w-4 h-4 text-gray-400" />; })()}
             {selectedType.description}
           </p>
         )}
@@ -130,17 +132,12 @@ export function BlogInputForm({ onSubmit, loading = false }: Props) {
       >
         {loading ? (
           <>
-            <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
+            <Loader2 className="w-5 h-5 animate-spin" />
             Generating Titles...
           </>
         ) : (
           <>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+            <Zap className="w-5 h-5" />
             Generate Blog Titles
           </>
         )}

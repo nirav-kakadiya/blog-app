@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Platform } from '@/types';
+import { useToast } from '@/hooks/useToast';
 
 interface PlatformStatus {
   platform: Platform;
@@ -73,6 +74,7 @@ export function PublishPanel({
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const toast = useToast();
 
   const togglePlatform = useCallback((platform: Platform) => {
     setSelectedPlatforms((prev) => {
@@ -163,9 +165,9 @@ export function PublishPanel({
     try {
       const result = await onPreview(platform);
       await navigator.clipboard.writeText(result.content);
-      alert('Content copied to clipboard!');
+      toast.success('Content copied to clipboard');
     } catch {
-      alert('Failed to copy content');
+      toast.error('Failed to copy content');
     }
   }, [onPreview]);
 

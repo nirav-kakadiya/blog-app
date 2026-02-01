@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { BlogType } from '@/types';
+import { SEOPanel } from '@/components/SEOPanel';
+import { SkeletonTabPanel } from '@/components/ui/Skeleton';
+import { useToast } from '@/hooks/useToast';
+import { Check, X, Zap, RefreshCw, Copy, CheckCircle } from 'lucide-react';
+import { getScoreColor as getScoreHex } from '@/lib/score-utils';
 
 interface SearchCheck {
   id: string;
@@ -32,12 +37,31 @@ interface SearchScoreResult {
   summary: string;
 }
 
+interface SEOSettingsProps {
+  content: string;
+  initialData: {
+    title: string;
+    metaDescription: string;
+    focusKeyword: string;
+    secondaryKeywords: string[];
+    canonicalUrl: string;
+  };
+  onChange: (data: {
+    title: string;
+    metaDescription: string;
+    focusKeyword: string;
+    secondaryKeywords: string[];
+    canonicalUrl: string;
+  }) => void;
+}
+
 interface SearchScorePanelProps {
   content: string;
   keyword: string;
   title: string;
   blogType: BlogType;
   metaDescription?: string;
+  seoSettings?: SEOSettingsProps;
 }
 
 const IMPORTANCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -46,12 +70,12 @@ const IMPORTANCE_STYLES: Record<string, { bg: string; text: string; label: strin
   optional: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Optional' },
 };
 
-export function SearchScorePanel({ content, keyword, title, blogType, metaDescription }: SearchScorePanelProps) {
+export function SearchScorePanel({ content, keyword, title, blogType, metaDescription, seoSettings }: SearchScorePanelProps) {
   const [result, setResult] = useState<SearchScoreResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'seo' | 'aeo' | 'schema'>('seo');
-  const [copiedSchema, setCopiedSchema] = useState(false);
+  const [activeTab, setActiveTab] = useState<'seo' | 'aeo' | 'schema' | 'settings'>('seo');
+  const toast = useToast();
 
   const runCheck = async () => {
     setLoading(true);
@@ -79,12 +103,7 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-500">Analyzing SEO + AEO search score...</p>
-      </div>
-    );
+    return <SkeletonTabPanel />;
   }
 
   if (error) {
@@ -100,9 +119,13 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
 
   if (!result) return null;
 
-  const overallColor = getScoreColor(result.overall);
-  const seoColor = getScoreColor(result.seo.score);
-  const aeoColor = getScoreColor(result.aeo.score);
+  const overallColor = getTextColor(result.overall);
+  const seoColor = getTextColor(result.seo.score);
+  const aeoColor = getTextColor(result.aeo.score);
+
+  const tabs = seoSettings
+    ? (['seo', 'aeo', 'schema', 'settings'] as const)
+    : (['seo', 'aeo', 'schema'] as const);
 
   return (
     <div className="space-y-6">
@@ -119,8 +142,9 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
           </div>
           <button
             onClick={runCheck}
-            className="px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50"
+            className="px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center gap-1.5"
           >
+            <RefreshCw className="w-3.5 h-3.5" />
             Re-analyze
           </button>
         </div>
@@ -151,9 +175,7 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
       {result.suggestions.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+            <Zap className="w-4 h-4 text-amber-500" />
             What to Fix ({result.suggestions.length})
           </h3>
           <ul className="space-y-2">
@@ -172,12 +194,12 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
 
       {/* Tab Switcher */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="flex border-b border-gray-200">
-          {(['seo', 'aeo', 'schema'] as const).map((tab) => (
+        <div className="flex border-b border-gray-200 overflow-x-auto scrollbar-hide">
+          {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex-shrink-0 ${
                 activeTab === tab
                   ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -185,7 +207,8 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
             >
               {tab === 'seo' ? `SEO Checks (${result.seo.score}%)` :
                tab === 'aeo' ? `AEO Checks (${result.aeo.score}%)` :
-               `Schema (${result.schemas.schemas.length})`}
+               tab === 'schema' ? `Schema (${result.schemas.schemas.length})` :
+               'Settings'}
             </button>
           ))}
         </div>
@@ -204,18 +227,25 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
                     navigator.clipboard.writeText(
                       `<script type="application/ld+json">\n${result.schemas.jsonLd}\n</script>`
                     );
-                    setCopiedSchema(true);
-                    setTimeout(() => setCopiedSchema(false), 2000);
+                    toast.success('JSON-LD copied to clipboard');
                   }}
-                  className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded hover:bg-blue-50"
+                  className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded hover:bg-blue-50 flex items-center gap-1.5"
                 >
-                  {copiedSchema ? 'Copied!' : 'Copy JSON-LD'}
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy JSON-LD
                 </button>
               </div>
               <pre className="bg-gray-900 text-green-400 text-xs rounded-lg p-4 overflow-x-auto max-h-96 overflow-y-auto">
                 <code>{`<script type="application/ld+json">\n${result.schemas.jsonLd}\n</script>`}</code>
               </pre>
             </div>
+          )}
+          {activeTab === 'settings' && seoSettings && (
+            <SEOPanel
+              content={seoSettings.content}
+              initialData={seoSettings.initialData}
+              onChange={seoSettings.onChange}
+            />
           )}
         </div>
       </div>
@@ -238,7 +268,7 @@ function ScoreRing({ label, score, color, subtitle }: { label: string; score: nu
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            className={color}
+            className={`${color} transition-all duration-700 ease-out`}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -278,13 +308,9 @@ function CheckList({ checks }: { checks: SearchCheck[] }) {
               {items.map((check) => (
                 <div key={check.id} className="flex items-start gap-2.5 py-1.5">
                   {check.passed ? (
-                    <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+                    <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                   ) : (
-                    <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
                   )}
                   <div>
                     <p className={`text-sm ${check.passed ? 'text-gray-500' : 'text-gray-900 font-medium'}`}>
@@ -304,7 +330,7 @@ function CheckList({ checks }: { checks: SearchCheck[] }) {
   );
 }
 
-function getScoreColor(score: number): string {
+function getTextColor(score: number): string {
   if (score >= 90) return 'text-green-600';
   if (score >= 75) return 'text-green-500';
   if (score >= 60) return 'text-yellow-500';

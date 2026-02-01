@@ -6,6 +6,8 @@ import { BlogInputForm } from '@/components/BlogInputForm';
 import { TitleSelector } from '@/components/TitleSelector';
 import { EditorLayout } from '@/components/Editor';
 import { BlogType } from '@/types';
+import { useToast } from '@/hooks/useToast';
+import { Pencil, Loader2, Check, X } from 'lucide-react';
 
 type Step = 'input' | 'titles' | 'generating' | 'content';
 
@@ -42,7 +44,7 @@ export default function CreateBlogPage() {
     searchGrade?: string;
   }>({});
   const [error, setError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const toast = useToast();
 
   const handleInputSubmit = async (data: { keyword: string; blogType: BlogType }) => {
     setLoading(true);
@@ -155,7 +157,6 @@ export default function CreateBlogPage() {
     if (!blogData.id) return;
 
     setSaving(true);
-    setSaveSuccess(false);
     try {
       const res = await fetch(`/api/blogs/${blogData.id}`, {
         method: 'PUT',
@@ -169,10 +170,9 @@ export default function CreateBlogPage() {
       if (!res.ok) throw new Error('Failed to save');
 
       setBlogData((prev) => ({ ...prev, content: content.markdown }));
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      toast.success('Content saved successfully!');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      toast.error(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -189,9 +189,7 @@ export default function CreateBlogPage() {
             <div className="flex items-center gap-4">
               <Link href="/" className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
+                  <Pencil className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-lg font-semibold text-gray-900 hidden sm:block">BlogForge</span>
               </Link>
@@ -235,10 +233,7 @@ export default function CreateBlogPage() {
             <div className="flex items-center gap-3">
               {saving && (
                 <span className="text-sm text-gray-500 flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                   Saving...
                 </span>
               )}
@@ -277,17 +272,20 @@ export default function CreateBlogPage() {
           </div>
         )}
 
-        {/* Success Toast */}
-        {saveSuccess && (
-          <div className="fixed top-20 right-4 p-4 bg-green-50 border border-green-200 rounded-xl shadow-lg z-50 animate-slideIn">
-            <p className="text-sm text-green-700 flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Content saved successfully!
-            </p>
+        {/* Mobile Progress Bar */}
+        <div className="md:hidden px-4 pt-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-gray-500">
+              Step {currentStepIndex + 1} of {STEPS.length}: {STEPS[currentStepIndex]?.label}
+            </span>
           </div>
-        )}
+          <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 rounded-full transition-all duration-500"
+              style={{ width: `${((currentStepIndex + 1) / STEPS.length) * 100}%` }}
+            />
+          </div>
+        </div>
 
         {/* Step 1: Input */}
         {step === 'input' && (

@@ -9,10 +9,11 @@ type ViewMode = 'edit' | 'preview' | 'split';
 interface EditorLayoutProps {
   initialContent?: string;
   onSave?: (content: { html: string; markdown: string }) => void;
+  onChange?: () => void;
   placeholder?: string;
 }
 
-export function EditorLayout({ initialContent = '', onSave, placeholder }: EditorLayoutProps) {
+export function EditorLayout({ initialContent = '', onSave, onChange, placeholder }: EditorLayoutProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [content, setContent] = useState({ html: '', markdown: initialContent });
   const editorRef = useRef<HTMLDivElement>(null);
@@ -20,7 +21,8 @@ export function EditorLayout({ initialContent = '', onSave, placeholder }: Edito
 
   const handleContentChange = useCallback((newContent: { html: string; markdown: string }) => {
     setContent(newContent);
-  }, []);
+    onChange?.();
+  }, [onChange]);
 
   // Sync scroll between editor and preview in split mode
   useEffect(() => {
