@@ -111,6 +111,10 @@ E-E-A-T determines eligibility for AI citations. Without it, you're invisible.
 - Write with consistent depth and correctness on the topic
 - Use precise technical terminology appropriate for the audience
 - Provide original insights — not just regurgitated specs
+- Go beyond surface-level specs — explain WHY something matters, not just WHAT it does
+- Include specific workflows, settings, or configurations a practitioner would use
+- When describing a feature, include a concrete usage example (exact steps, settings, expected output)
+- Replace marketing language with practitioner language
 
 **Authoritativeness signals:**
 - Reference 2+ named external sources per article (studies, companies, reports)
@@ -232,9 +236,16 @@ Every article MUST contain these elements in this order. Missing any = content f
 
 ### NEVER Use
 - Vague quantities: "many", "some", "a lot", "several", "various", "numerous"
-- Generic fillers: "In today's rapidly evolving world...", "It goes without saying..."
+- Generic fillers: "In today's rapidly evolving world...", "It goes without saying...",
+  "cutting-edge", "state-of-the-art", "revolutionary", "game-changing", "next-level",
+  "seamless", "robust", "leverage", "harness the power of", "take your X to the next level",
+  "Whether you're a beginner or expert...", "In the ever-evolving landscape...",
+  "Look no further", "without breaking the bank", "a must-have for", "unlock the full potential"
 - Unattributed claims: "Studies show..." without naming the study
 - Round-number estimates when specifics are available
+- Empty enthusiasm: "amazing", "incredible", "mind-blowing", "stunning", "game-changer"
+- Hedge stacking: "It might potentially possibly help..."
+- Filler transitions: "That being said", "It's worth noting that", "Needless to say"
 
 ---
 
@@ -271,12 +282,59 @@ Every article MUST contain these elements in this order. Missing any = content f
 
 ---
 
+## WRITING STYLE & TONE (CRITICAL FOR ENGAGEMENT)
+
+### Voice
+- Write like a knowledgeable friend explaining something over coffee — authoritative but approachable
+- Use "you" and "your" naturally — address the reader directly
+- Be specific and honest, including limitations and honest assessments
+- Use short, punchy sentences. Mix with one medium-length sentence for rhythm.
+
+### Paragraph Rules
+- Maximum 3 sentences per paragraph in body text
+- One idea per paragraph — if you're making a new point, start a new paragraph
+- Use line breaks liberally. White space is your friend.
+
+### Practical Language
+- Replace vague claims with testable specifics:
+  BAD: "produces high-quality images"
+  GOOD: "generates 1024×1024 images at 30 steps in ~8 seconds with coherent text rendering"
+- Replace corporate speak with direct language:
+  BAD: "Users may find that leveraging this tool enhances their workflow"
+  GOOD: "This tool speeds up your workflow — most users save 2-3 hours per project"
+- When describing a feature, ALWAYS include what a user can DO with it, not just what it IS
+
+### Honesty Requirements
+- Include "Not ideal for" or "Skip if" sections wherever relevant — readers trust honest content
+- Mention real limitations alongside strengths
+- Never claim something is "the best" without evidence or qualification
+- Use "works well for [X], less suited for [Y]" framing
+
+---
+
+## READER ENGAGEMENT & PRACTICAL VALUE
+
+### Engagement Hooks (at least 2 per article)
+- Include a "Pro Tip" callout (use > **Pro Tip:** format) — share an insider technique
+- Add a "Quick Win" — something the reader can try in under 2 minutes
+- Include at least one conditional recommendation: "If [situation], try [specific action]"
+
+### Practical Value Requirements
+- Every tutorial section must include at least one copy-paste ready example (prompt, command, config)
+- Include specific numbers readers can use: exact settings, dimensions, parameters
+- Where relevant, include sample prompts or starter templates readers can copy directly
+- Every "how to" step should tell the reader what they'll SEE as confirmation it worked
+
+---
+
 ## KEYWORD INTEGRATION STRATEGY
 
 For the primary keyword, place it naturally in:
 1. First sentence of introduction (MANDATORY)
 2. Entity definition sentence in first 150 words (MANDATORY)
-3. At least 1 H2 heading (MANDATORY)
+3. Maximum 2 H2 headings may contain the primary keyword — the rest MUST use natural, descriptive phrasing
+   - GOOD: "## What Is Midjourney V6?" + "## Pricing and Plans" + "## How to Write Better Prompts"
+   - BAD: "## Midjourney V6 Features" + "## Midjourney V6 Pricing" + "## Midjourney V6 Pros and Cons"
 4. 1-2 TL;DR bullet points
 5. 2-3 FAQ questions
 6. Conclusion section (1 mention)
@@ -1603,7 +1661,7 @@ function getToolsPrompt(keyword: string, title: string): string {
 [Company background and market context]
 [Key positioning against competitors]
 
-## What Are ${keyword}'s Key Features?
+## Key Features and Capabilities
 [DIRECT ANSWER: 40-60 words highlighting the standout features.]
 
 ### Feature 1: [Name]
@@ -1612,12 +1670,12 @@ function getToolsPrompt(keyword: string, title: string): string {
 ### Feature 2: [Name]
 [Continue for 5-8 key features]
 
-## How Does ${keyword} Work?
+## How It Works
 [DIRECT ANSWER: 40-60 words on the underlying technology/process.]
 [Simplified workflow explanation]
 [Technical overview in accessible language]
 
-## Who Should Use ${keyword}?
+## Who Is It Best For?
 [DIRECT ANSWER: 40-60 words on ideal users.]
 - **[User type 1]**: [Specific reason with use case scenario]
 - **[User type 2]**: [Reason]
@@ -1626,7 +1684,7 @@ function getToolsPrompt(keyword: string, title: string): string {
 **Not ideal for:**
 - [User type who should skip + why]
 
-## How to Get Started with ${keyword}
+## Getting Started (Step-by-Step)
 
 ### Step 1: [Sign Up / Access]
 [Specific instructions with URL guidance]
@@ -1639,7 +1697,7 @@ function getToolsPrompt(keyword: string, title: string): string {
 
 [5-7 steps to first success]
 
-## ${keyword} Pricing and Plans
+## Pricing and Plans
 | Plan | Monthly Price | Annual Price | Key Features | Best For |
 |------|--------------|--------------|--------------|----------|
 | Free | $0 | $0 | [Feature limits] | [User type] |
@@ -1652,7 +1710,7 @@ function getToolsPrompt(keyword: string, title: string): string {
 - [Key limitations]
 - [Usage caps]
 
-## ${keyword} Pros and Cons
+## Honest Pros and Cons
 
 **Pros:**
 - [Specific strength 1 with detail]
@@ -1666,26 +1724,48 @@ function getToolsPrompt(keyword: string, title: string): string {
 - [Limitation 2]
 - [Limitation 3]
 
-## ${keyword} vs Alternatives
+## How Does It Compare?
+[DIRECT ANSWER: 40-60 words on competitive positioning.]
+
+### [Alternative 1 Name]
+**What it does:** [One-line description]
+**Strengths:** [2-3 bullet points]
+**Limitations:** [1-2 bullet points]
+**Best for:** [One-line use case]
+
+### [Alternative 2 Name]
+[Same format — Description, Strengths, Limitations, Best for]
+
 | Feature | ${keyword} | [Alt 1] | [Alt 2] |
 |---------|------------|---------|---------|
 | Price | [Specific] | [Specific] | [Specific] |
 | Quality | [Rating] | [Rating] | [Rating] |
 | Speed | [Metric] | [Metric] | [Metric] |
-| Free Tier | [Details] | [Details] | [Details] |
 | Best For | [Use case] | [Use case] | [Use case] |
 
-## ${keyword} Performance and Benchmarks
+## Performance Benchmarks
 | Metric | ${keyword} | Industry Average |
 |--------|------------|-----------------|
 | [Speed metric] | [Value] | [Average] |
 | [Quality metric] | [Value] | [Average] |
 | [Accuracy metric] | [Value] | [Average] |
 
-## What's New in ${keyword}?
+## Latest Updates and Changes
 [Latest version updates and changelog highlights]
 - **[Latest version]**: [Key changes]
 - **[Previous version]**: [What changed]
+
+## Sample ${keyword} Workflows
+
+### Workflow 1: [Most Common Use Case]
+1. [Step with specific setting/parameter]
+2. [Step with exact configuration]
+3. [Expected result with quality/time metric]
+
+### Workflow 2: [Different Use Case]
+[Same step pattern with specific settings and expected output]
+
+> **Pro Tip:** [Insider technique that improves results — discovered through testing, not listed in official docs]
 
 ## FAQs
 
@@ -1698,7 +1778,7 @@ function getToolsPrompt(keyword: string, title: string): string {
 ### 3. Is ${keyword} good for beginners?
 [Direct answer with learning curve assessment.]
 
-### 4. How does ${keyword} compare to [main competitor]?
+### 4. How does ${keyword} compare to alternatives?
 [Direct answer with key differentiators.]
 
 ### 5. Is ${keyword} worth it in 2026?
@@ -1721,7 +1801,7 @@ function getToolsPrompt(keyword: string, title: string): string {
 
 [Who should use it vs. who should look elsewhere]
 
-## Try ${keyword} Today
+## Get Started Today
 [CTA: specific action to get started]
 
 *Last Updated: February 2026*
@@ -1797,7 +1877,7 @@ function getReviewPrompt(keyword: string, title: string): string {
 - **Metrics Measured:** [What you evaluated and how]
 - **Testing Environment:** [Hardware, software, conditions]
 
-## ${keyword} Key Features: In-Depth Analysis
+## Key Features: In-Depth Analysis
 
 ### Feature 1: [Name]
 [DIRECT ANSWER: 40-60 words on this feature's real-world performance.]
@@ -1807,19 +1887,19 @@ function getReviewPrompt(keyword: string, title: string): string {
 ### Feature 2: [Name]
 [Continue for 4-6 major features, each with testing evidence]
 
-## What I Liked About ${keyword} (Pros)
+## What I Liked (Pros)
 [DIRECT ANSWER: 40-60 words on the biggest strengths.]
 1. **[Strength]**: [Specific evidence from testing — include numbers]
 2. **[Strength]**: [Detail with comparison]
 [5-8 pros total, each with evidence]
 
-## What Could Be Better About ${keyword} (Cons)
+## What Could Be Better (Cons)
 [DIRECT ANSWER: 40-60 words — honest assessment.]
 1. **[Limitation]**: [Specific impact on real usage + workaround if available]
 2. **[Limitation]**: [Detail with severity assessment]
 [3-5 cons total, honest and specific]
 
-## ${keyword} Pricing: Is It Worth It?
+## Pricing: Is It Worth the Money?
 [DIRECT ANSWER: 40-60 words on value for money.]
 
 | Plan | Price | What You Get | Value Rating |
@@ -1830,7 +1910,7 @@ function getReviewPrompt(keyword: string, title: string): string {
 
 **Value assessment:** [Honest analysis of price vs. what you get]
 
-## How Does ${keyword} Compare to Alternatives?
+## How Does It Compare?
 [DIRECT ANSWER: 40-60 words on competitive positioning.]
 
 | Feature | ${keyword} | [Competitor 1] | [Competitor 2] |
@@ -1841,7 +1921,7 @@ function getReviewPrompt(keyword: string, title: string): string {
 | Free Tier | [Detail] | [Detail] | [Detail] |
 | Best For | [Use case] | [Use case] | [Use case] |
 
-## Who Should Use ${keyword}?
+## Who Should Use It?
 
 ### Perfect For:
 - [User type with specific scenario and why]
@@ -1852,6 +1932,19 @@ function getReviewPrompt(keyword: string, title: string): string {
 - [User type who should skip + specific reason]
 - [User type]
 
+## Real-World Use Cases I Tested
+
+### Use Case 1: [Scenario Name]
+- **Task:** [What I tried to accomplish]
+- **Settings Used:** [Exact configuration]
+- **Result:** [Specific outcome with metrics]
+- **Verdict:** [One-line honest assessment]
+
+### Use Case 2: [Different Scenario]
+[Same pattern — Task, Settings, Result, Verdict]
+
+> **Pro Tip:** [Technique discovered during testing that isn't in official docs]
+
 ## FAQs
 
 ### 1. Is ${keyword} worth it in 2026?
@@ -1860,7 +1953,7 @@ function getReviewPrompt(keyword: string, title: string): string {
 ### 2. What is the biggest ${keyword} limitation?
 [Direct honest answer.]
 
-### 3. How does ${keyword} compare to [main competitor]?
+### 3. How does ${keyword} compare to its top alternative?
 [Direct comparison with key differentiators.]
 
 ### 4. Does ${keyword} have a free version?
@@ -1877,7 +1970,7 @@ function getReviewPrompt(keyword: string, title: string): string {
 
 [7-10 FAQs total]
 
-## Final Verdict: ${keyword} Review
+## Final Verdict
 **Overall Rating: [X/10]**
 
 1. [Biggest strength recap]
@@ -1888,13 +1981,52 @@ function getReviewPrompt(keyword: string, title: string): string {
 
 [Who should buy + who should skip, in 2-3 sentences]
 
-## Try ${keyword} Today
+## Get Started Today
 [CTA: specific action]
 
 *Last Updated: February 2026*
 
 ---
 Write the complete review in Markdown showing genuine expertise through specific observations, honest pros/cons, real testing methodology, and clear comparative data.`;
+}
+
+// ============================================================================
+// POST-GENERATION CONTENT CLEANUP
+// ============================================================================
+function cleanGeneratedContent(content: string, keyword: string): string {
+  let cleaned = content;
+
+  // 1. Remove leaked placeholders
+  cleaned = cleaned.replace(/\[insert[^\]]*\]/gi, '');
+  cleaned = cleaned.replace(/\[your[^\]]*\]/gi, '');
+  cleaned = cleaned.replace(/\[main competitor\]/gi, 'alternatives');
+  cleaned = cleaned.replace(/\[add[^\]]*\]/gi, '');
+  cleaned = cleaned.replace(/\{keyword\}/gi, keyword);
+  cleaned = cleaned.replace(/\{topic\}/gi, keyword);
+  cleaned = cleaned.replace(/\[todo[^\]]*\]/gi, '');
+
+  // 2. Remove common LLM filler phrases
+  const fillerPatterns = [
+    /In today's rapidly evolving (?:world|landscape|digital age)[.,]?\s*/gi,
+    /It's no secret that\s*/gi,
+    /Without further ado[.,]?\s*/gi,
+    /In the ever-evolving landscape of\s*/gi,
+    /Whether you're a beginner or (?:an )?expert[.,]?\s*/gi,
+    /Look no further[.!]?\s*/gi,
+    /It goes without saying (?:that )?\s*/gi,
+    /Needless to say[.,]?\s*/gi,
+  ];
+  for (const pattern of fillerPatterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+
+  // 3. Fix artifacts from removals
+  cleaned = cleaned.replace(/  +/g, ' ');
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  cleaned = cleaned.replace(/\*\*\s*\*\*/g, '');
+  cleaned = cleaned.replace(/\[\s*\]\([^)]*\)/g, '');
+
+  return cleaned.trim();
 }
 
 // ============================================================================
@@ -1971,7 +2103,7 @@ export async function generateContent(input: ContentGeneratorInput): Promise<Con
       temperature: 0.7,
     });
 
-    const content = response.content;
+    const content = cleanGeneratedContent(response.content, keyword);
 
     // Generate meta description optimized for CTR + AEO extraction
     const metaPrompt = `Write a meta description for this blog post.
