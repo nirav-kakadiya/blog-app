@@ -15,6 +15,14 @@ export interface LinkMatch {
   relevanceScore: number;
 }
 
+/**
+ * Normalize version separators so "seedream 4.5", "seedream 4-5", "seedream 4 5"
+ * all become "seedream 4 5" for comparison purposes.
+ */
+function normalizeVersions(text: string): string {
+  return text.replace(/(\d)[.\-](\d)/g, '$1 $2');
+}
+
 export function findRelevantLinks(
   keyword: string,
   blogType: string,
@@ -22,7 +30,7 @@ export function findRelevantLinks(
   domain: string,
   maxResults: number = 10
 ): LinkMatch[] {
-  const normalizedKeyword = keyword.toLowerCase().trim();
+  const normalizedKeyword = normalizeVersions(keyword.toLowerCase().trim());
   const keywordTokens = normalizedKeyword.split(/\s+/);
   const matches: LinkMatch[] = [];
 
@@ -31,9 +39,9 @@ export function findRelevantLinks(
     let bestMatchedKeyword = '';
 
     for (const toolKw of tool.keywords) {
-      const normalizedToolKw = toolKw.toLowerCase().trim();
+      const normalizedToolKw = normalizeVersions(toolKw.toLowerCase().trim());
 
-      // Tier 1: Exact match
+      // Tier 1: Exact match (after normalization)
       if (normalizedKeyword === normalizedToolKw) {
         bestScore = 1.0;
         bestMatchedKeyword = toolKw;
@@ -62,9 +70,9 @@ export function findRelevantLinks(
       }
     }
 
-    // Also check tool name
+    // Also check tool name (with version normalization)
     if (bestScore === 0) {
-      const normalizedName = tool.name.toLowerCase();
+      const normalizedName = normalizeVersions(tool.name.toLowerCase());
       if (normalizedKeyword.includes(normalizedName) || normalizedName.includes(normalizedKeyword)) {
         bestScore = 0.5;
         bestMatchedKeyword = tool.name;

@@ -113,13 +113,36 @@ export function slugToKeywords(path: string): string[] {
   // Remove /m/ prefix for model pages
   cleanPath = cleanPath.replace(/^m\//, '');
 
-  // Convert slug to keywords
-  const keyword = cleanPath
-    .replace(/[-_]/g, ' ')
-    .replace(/\//g, ' ')
-    .trim()
-    .toLowerCase();
+  // Use only the last segment of nested paths to avoid duplication
+  // e.g. "veo/veo-2" → "veo-2", "seedream/seedream-4-5" → "seedream-4-5"
+  const segments = cleanPath.split('/').filter(Boolean);
+  const lastSegment = segments[segments.length - 1] || cleanPath;
 
-  if (!keyword) return [];
-  return [keyword];
+  // Generate keyword variants to handle version numbers with dots/hyphens/spaces
+  // e.g. "seedream-4-5" → ["seedream 4.5", "seedream 4-5", "seedream 4 5"]
+  const keywords = new Set<string>();
+
+  // Base: hyphens → spaces ("seedream-4-5" → "seedream 4 5")
+  const base = lastSegment.replace(/[-_]/g, ' ').trim().toLowerCase();
+  if (base) keywords.add(base);
+
+  // Variant: version-style dots ("seedream 4 5" → "seedream 4.5")
+  // Pattern: word followed by space-separated numbers → word N.N
+  const dotVersion = base.replace(/(\d+)\s+(\d+)/g, '$1.$2');
+  if (dotVersion !== base) keywords.add(dotVersion);
+
+  // Variant: hyphenated version ("seedream 4 5" → "seedream 4-5")
+  const hyphenVersion = base.replace(/(\d+)\s+(\d+)/g, '$1-$2');
+  if (hyphenVersion !== base) keywords.add(hyphenVersion);
+
+  // Also add full path variant for parent context (e.g. "veo 2" and "veo veo 2")
+  if (segments.length > 1) {
+    const fullKeyword = segments.join(' ').replace(/[-_]/g, ' ').trim().toLowerCase();
+    // Only add if meaningfully different from the last-segment keywords
+    if (fullKeyword && !keywords.has(fullKeyword)) {
+      keywords.add(fullKeyword);
+    }
+  }
+
+  return Array.from(keywords).filter(k => k.length > 0);
 }

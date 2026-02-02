@@ -114,6 +114,28 @@ function countWordsInLine(line: string): number {
   return line.trim().split(/\s+/).filter(Boolean).length;
 }
 
+/**
+ * Build regex pattern that matches version-number variants.
+ * "seedream 4.5" matches "Seedream 4.5", "Seedream 4-5", "Seedream 4 5"
+ * "veo 2" matches "Veo 2", "Veo-2"
+ */
+function buildFlexiblePattern(term: string): string {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Replace version separators (space, dot, hyphen between digits) with flexible matcher
+  // e.g. "4\.5" → "4[\.\-\s]5", "4 5" → "4[\.\-\s]5", "4\-5" → "4[\.\-\s]5"
+  return escaped.replace(
+    /(\d)\\ ?([.\-])\\ ?(\d)/g,
+    '$1[.\\-\\s]$3'
+  ).replace(
+    /(\d)\s+(\d)/g,
+    '$1[.\\-\\s]$2'
+  ).replace(
+    // Also handle word-number boundaries: "veo 2" → "veo[\s\-]2"
+    /([a-zA-Z])\s+(\d)/g,
+    '$1[\\s\\-]$2'
+  );
+}
+
 function tryInjectLink(line: string, match: LinkMatch): string | null {
   // Build search patterns from the matched keyword and tool name
   const searchTerms = [
@@ -125,9 +147,9 @@ function tryInjectLink(line: string, match: LinkMatch): string | null {
   for (const term of searchTerms) {
     if (!term || term.length < 3) continue;
 
-    // Case-insensitive search, but not inside existing links
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(?<![\\[\\(])\\b(${escaped})\\b(?![\\]\\)])`, 'i');
+    // Build flexible pattern that handles version variants (4.5 / 4-5 / 4 5)
+    const pattern = buildFlexiblePattern(term);
+    const regex = new RegExp(`(?<![\\[\\(])\\b(${pattern})\\b(?![\\]\\)])`, 'i');
     const found = regex.exec(line);
 
     if (found) {
@@ -137,7 +159,7 @@ function tryInjectLink(line: string, match: LinkMatch): string | null {
       const closeBrackets = (beforeMatch.match(/\]/g) || []).length;
       if (openBrackets > closeBrackets) continue; // Inside a link
 
-      const original = found[1];
+      const original = found[0];
       const linked = `[${original}](${match.fullUrl})`;
       return line.substring(0, found.index) + linked + line.substring(found.index + original.length);
     }
