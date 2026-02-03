@@ -76,6 +76,8 @@ export default function EditBlogPage() {
   const [generatingImages, setGeneratingImages] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [scoreKey, setScoreKey] = useState(0);
+  const [previousScores, setPreviousScores] = useState<{ overall: number; seo: number; aeo: number } | null>(null);
+  const [currentScores, setCurrentScores] = useState<{ overall: number; seo: number; aeo: number } | null>(null);
 
   useUnsavedChanges(isDirty);
 
@@ -156,14 +158,21 @@ export default function EditBlogPage() {
       const data = await res.json();
       setBlog(data.data);
       setIsDirty(false);
+      // Save current scores as previous for comparison after re-analysis
+      setPreviousScores(currentScores);
+      // Increment scoreKey to trigger re-analysis with new content
       setScoreKey((k) => k + 1);
-      toast.success('Optimized content applied');
+      toast.success('Changes applied! Re-analyzing scores...');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to apply optimized content');
     } finally {
       setSaving(false);
     }
-  }, [blogId, toast]);
+  }, [blogId, toast, currentScores]);
+
+  const handleScoreUpdate = useCallback((scores: { overall: number; seo: number; aeo: number }) => {
+    setCurrentScores(scores);
+  }, []);
 
   const handleSEOChange = useCallback(async (seoData: {
     title: string;
@@ -447,6 +456,8 @@ export default function EditBlogPage() {
                 metaDescription={blog.metaDescription}
                 blogId={blogId}
                 onOptimizeApply={handleOptimizeApply}
+                previousScores={previousScores}
+                onScoreUpdate={handleScoreUpdate}
                 seoSettings={{
                   content: blog.content,
                   initialData: {

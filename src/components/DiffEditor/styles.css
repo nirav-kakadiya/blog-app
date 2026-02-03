@@ -1,0 +1,304 @@
+/* Professional Diff Editor Styles */
+
+/* Split View */
+.diff-split-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-split-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.diff-split-header-left,
+.diff-split-header-right {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.diff-split-header-left {
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Diff Row */
+.diff-row {
+  display: flex;
+  position: relative;
+  min-height: 26px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.diff-row:hover {
+  background: #fafbfc;
+}
+
+.diff-cell-left,
+.diff-cell-right {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.diff-cell-left {
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Line numbers */
+.diff-line-number {
+  width: 40px;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  text-align: right;
+  color: #9ca3af;
+  background: #f9fafb;
+  user-select: none;
+  font-size: 10px;
+}
+
+/* Line content */
+.diff-line-content {
+  flex: 1;
+  padding: 4px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+/* Actions column */
+.diff-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  background: #f9fafb;
+  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.diff-row:hover .diff-actions {
+  opacity: 1;
+}
+
+.diff-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.diff-action-accept {
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+.diff-action-accept:hover {
+  background: #dcfce7;
+}
+
+.diff-action-reject {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.diff-action-reject:hover {
+  background: #fee2e2;
+}
+
+.diff-action-reset {
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.diff-action-reset:hover {
+  background: #e5e7eb;
+}
+
+/* Small action buttons for unified view */
+.diff-action-btn-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+/* Word-level highlights */
+.diff-word-added {
+  background: #bbf7d0;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.diff-word-removed {
+  background: #fecaca;
+  border-radius: 2px;
+  padding: 0 1px;
+  text-decoration: line-through;
+  text-decoration-color: #dc2626;
+}
+
+/* Unified View */
+.diff-unified-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-unified-row {
+  display: flex;
+  align-items: flex-start;
+  min-height: 26px;
+  border-bottom: 1px solid #f3f4f6;
+  position: relative;
+}
+
+.diff-unified-row:hover {
+  background: #fafbfc;
+}
+
+.diff-unified-marker {
+  width: 20px;
+  flex-shrink: 0;
+  padding: 4px 0;
+  text-align: center;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.diff-unified-content {
+  flex: 1;
+  padding: 4px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.diff-unified-actions {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.diff-unified-row:hover .diff-unified-actions {
+  opacity: 1;
+}
+
+/* Collapse rows */
+.diff-collapse-row,
+.diff-collapse-row-unified {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: #3b82f6;
+  background: #eff6ff;
+  border-top: 1px solid #bfdbfe;
+  border-bottom: 1px solid #bfdbfe;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.diff-collapse-row:hover,
+.diff-collapse-row-unified:hover {
+  background: #dbeafe;
+}
+
+/* Line backgrounds based on type */
+.diff-row .diff-cell-left.bg-red-50 {
+  background: #fef2f2;
+}
+
+.diff-row .diff-cell-left.bg-red-50\/50 {
+  background: rgba(254, 242, 242, 0.5);
+}
+
+.diff-row .diff-cell-right.bg-green-50 {
+  background: #f0fdf4;
+}
+
+.diff-row .diff-cell-right.bg-green-50\/50 {
+  background: rgba(240, 253, 244, 0.5);
+}
+
+/* Decision indicators */
+.diff-row [class*="bg-red-100"],
+.diff-row [class*="bg-green-100"] {
+  font-size: 9px;
+  padding: 2px 6px;
+}
+
+/* Highlighted row (current change) */
+.diff-row.ring-2,
+.diff-unified-row.ring-2 {
+  z-index: 1;
+}
+
+/* Search match highlight */
+.diff-row.bg-yellow-50 .diff-cell-left,
+.diff-row.bg-yellow-50 .diff-cell-right {
+  background-blend-mode: multiply;
+}
+
+/* Scrollbar styling */
+.diff-editor ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.diff-editor ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.diff-editor ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.diff-editor ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Edit mode */
+.diff-editor textarea {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  line-height: 1.6;
+}
+
+/* Animation for accepting/rejecting */
+@keyframes pulse-green {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: #dcfce7; }
+}
+
+@keyframes pulse-red {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: #fee2e2; }
+}
+
+.diff-row.accepting {
+  animation: pulse-green 0.3s ease;
+}
+
+.diff-row.rejecting {
+  animation: pulse-red 0.3s ease;
+}

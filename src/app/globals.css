@@ -333,3 +333,6 @@ body {
   background: var(--surface);
   font-weight: 600;
 }
+
+/* Import DiffEditor styles */
+@import "../components/DiffEditor/styles.css";

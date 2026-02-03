@@ -180,6 +180,15 @@ export function analyzeSEO(content: string, keyword: string, title: string): SEO
 
   const score = Math.round((criticalScore * 0.5 + importantScore * 0.35 + optionalScore * 0.15) * 100);
 
+  // Log which checks failed for debugging
+  const failedChecks = checks.filter(c => !c.passed);
+  if (failedChecks.length > 0) {
+    logger.info('SEO failed checks', {
+      failedIds: failedChecks.map(c => c.id),
+      failedDetails: failedChecks.map(c => `${c.id} (${c.importance}): ${c.message}`),
+    });
+  }
+
   logger.info('SEO analysis complete', { score, passedChecks: checks.filter((c) => c.passed).length });
 
   return {

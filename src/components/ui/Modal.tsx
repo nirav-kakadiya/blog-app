@@ -9,7 +9,7 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   showClose?: boolean;
 }
 
@@ -18,6 +18,7 @@ const SIZE_CLASSES = {
   md: 'max-w-lg',
   lg: 'max-w-2xl',
   xl: 'max-w-5xl',
+  full: 'max-w-[95vw] max-h-[90vh]',
 };
 
 export function Modal({ isOpen, onClose, title, children, size = 'md', showClose = true }: ModalProps) {
@@ -59,10 +60,12 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', showClose
     >
       <div
         ref={contentRef}
-        className={`${SIZE_CLASSES[size]} w-full bg-white rounded-2xl shadow-xl animate-scaleIn`}
+        className={`${SIZE_CLASSES[size]} w-full bg-white rounded-2xl shadow-xl animate-scaleIn ${
+          size === 'full' ? 'flex flex-col overflow-hidden' : ''
+        }`}
       >
         {(title || showClose) && (
-          <div className="flex items-center justify-between px-6 pt-5 pb-0">
+          <div className="flex items-center justify-between px-6 pt-5 pb-0 flex-shrink-0">
             {title && (
               <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
                 {title}
@@ -79,7 +82,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', showClose
             )}
           </div>
         )}
-        <div className="px-6 py-5">{children}</div>
+        <div className={`px-6 py-5 ${size === 'full' ? 'flex-1 overflow-auto min-h-0' : ''}`}>{children}</div>
       </div>
     </div>,
     document.body

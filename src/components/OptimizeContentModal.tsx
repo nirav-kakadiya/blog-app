@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { BlogType } from '@/types';
-import { ContentDiffView } from '@/components/ContentDiffView';
-import { Sparkles, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
+import { DiffEditor } from '@/components/DiffEditor';
+import { Sparkles, Loader2, CheckCircle, ArrowLeft, AlertTriangle } from 'lucide-react';
 
 interface SearchCheck {
   id: string;
@@ -52,6 +52,7 @@ export function OptimizeContentModal({
   const [state, setState] = useState<ModalState>('input');
   const [userNotes, setUserNotes] = useState('');
   const [optimizedContent, setOptimizedContent] = useState('');
+  const [finalContent, setFinalContent] = useState('');
   const [changesSummary, setChangesSummary] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -91,6 +92,7 @@ export function OptimizeContentModal({
 
       const data = await res.json();
       setOptimizedContent(data.data.optimizedContent);
+      setFinalContent(data.data.optimizedContent);
       setChangesSummary(data.data.changesSummary);
       setState('preview');
     } catch (err) {
@@ -99,8 +101,12 @@ export function OptimizeContentModal({
     }
   };
 
+  const handleContentChange = useCallback((newContent: string) => {
+    setFinalContent(newContent);
+  }, []);
+
   const handleApply = () => {
-    onApply(optimizedContent);
+    onApply(finalContent);
     handleReset();
     onClose();
   };
@@ -109,6 +115,7 @@ export function OptimizeContentModal({
     setState('input');
     setUserNotes('');
     setOptimizedContent('');
+    setFinalContent('');
     setChangesSummary([]);
     setErrorMessage('');
   };
@@ -118,8 +125,11 @@ export function OptimizeContentModal({
     onClose();
   };
 
+  // Use full width modal for preview to maximize editing space
+  const modalSize = state === 'preview' ? 'full' : 'lg';
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size={state === 'preview' ? 'xl' : 'lg'} showClose={state !== 'loading'}>
+    <Modal isOpen={isOpen} onClose={handleClose} size={modalSize} showClose={state !== 'loading'}>
       {/* Input State */}
       {state === 'input' && (
         <div>
@@ -213,7 +223,7 @@ export function OptimizeContentModal({
       {state === 'error' && (
         <div className="py-8 text-center">
           <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-red-500 text-xl">!</span>
+            <AlertTriangle className="w-6 h-6 text-red-500" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-1">Optimization failed</h3>
           <p className="text-sm text-red-600 mb-5">{errorMessage}</p>
@@ -234,56 +244,75 @@ export function OptimizeContentModal({
         </div>
       )}
 
-      {/* Preview State */}
+      {/* Preview State - Professional Diff Editor */}
       {state === 'preview' && (
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Review Changes</h3>
-              <p className="text-sm text-gray-500">{changesSummary.length} improvement{changesSummary.length !== 1 ? 's' : ''} made</p>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
+                <CheckCircle className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Review & Edit Changes</h3>
+                <p className="text-sm text-gray-500">
+                  {changesSummary.length} improvement{changesSummary.length !== 1 ? 's' : ''} made • 
+                  Accept, reject, or manually edit changes
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Changes Summary */}
-          <div className="bg-green-50 border border-green-100 rounded-lg p-3 mb-4">
-            <p className="text-xs font-medium text-green-800 mb-2">What was changed:</p>
-            <ul className="space-y-1">
-              {changesSummary.map((change, i) => (
-                <li key={i} className="text-xs text-green-700 flex items-start gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
-                  {change}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Changes Summary - Collapsible */}
+          <details className="group mb-4">
+            <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <span className="flex items-center justify-center w-5 h-5 rounded bg-green-100 text-green-700 text-xs font-bold">
+                {changesSummary.length}
+              </span>
+              Changes made by AI
+              <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="mt-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-lg p-3">
+              <ul className="space-y-1.5">
+                {changesSummary.map((change, i) => (
+                  <li key={i} className="text-xs text-green-700 flex items-start gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>{change}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
 
-          {/* Diff View */}
-          <div className="mb-5">
-            <ContentDiffView original={content} optimized={optimizedContent} />
+          {/* Professional Diff Editor */}
+          <div className="flex-1 min-h-0 mb-4">
+            <DiffEditor
+              original={content}
+              optimized={optimizedContent}
+              onContentChange={handleContentChange}
+              className="h-full"
+            />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
             <button
               onClick={() => setState('input')}
-              className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5"
+              className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Back
+              Re-optimize
             </button>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleClose}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors rounded-lg hover:bg-gray-100"
               >
-                Discard
+                Discard All
               </button>
               <button
                 onClick={handleApply}
-                className="px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm flex items-center gap-2"
               >
                 <CheckCircle className="w-4 h-4" />
                 Apply Changes

@@ -65,6 +65,8 @@ interface SearchScorePanelProps {
   seoSettings?: SEOSettingsProps;
   blogId?: string;
   onOptimizeApply?: (optimizedContent: string) => void;
+  previousScores?: { overall: number; seo: number; aeo: number } | null;
+  onScoreUpdate?: (scores: { overall: number; seo: number; aeo: number }) => void;
 }
 
 const IMPORTANCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -73,17 +75,23 @@ const IMPORTANCE_STYLES: Record<string, { bg: string; text: string; label: strin
   optional: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Optional' },
 };
 
-export function SearchScorePanel({ content, keyword, title, blogType, metaDescription, seoSettings, blogId, onOptimizeApply }: SearchScorePanelProps) {
+export function SearchScorePanel({ content, keyword, title, blogType, metaDescription, seoSettings, blogId, onOptimizeApply, previousScores, onScoreUpdate }: SearchScorePanelProps) {
   const [result, setResult] = useState<SearchScoreResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'seo' | 'aeo' | 'schema' | 'settings'>('seo');
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
+  const [showImprovement, setShowImprovement] = useState(false);
   const toast = useToast();
 
   const runCheck = async () => {
     setLoading(true);
     setError(null);
+    
+    // Debug: Log content being analyzed
+    console.log('[SearchScorePanel] Running analysis with content length:', content.length);
+    console.log('[SearchScorePanel] Content preview (first 200 chars):', content.substring(0, 200));
+    
     try {
       const res = await fetch('/api/blogs/search-score', {
         method: 'POST',
@@ -92,7 +100,32 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
       });
       if (!res.ok) throw new Error('Analysis failed');
       const data = await res.json();
+      
+      // Debug: Log results
+      console.log('[SearchScorePanel] Analysis results:', {
+        overall: data.data?.overall,
+        seo: data.data?.seo?.score,
+        aeo: data.data?.aeo?.score,
+        failedChecks: data.data?.seo?.checks?.filter((c: { passed: boolean }) => !c.passed).map((c: { id: string }) => c.id),
+      });
+      
       setResult(data.data);
+      
+      // Notify parent of new scores
+      if (onScoreUpdate && data.data) {
+        onScoreUpdate({
+          overall: data.data.overall,
+          seo: data.data.seo.score,
+          aeo: data.data.aeo.score,
+        });
+      }
+      
+      // Show improvement indicator if previous scores exist
+      if (previousScores && data.data) {
+        setShowImprovement(true);
+        // Auto-hide improvement indicator after 5 seconds
+        setTimeout(() => setShowImprovement(false), 5000);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze');
     } finally {
@@ -136,8 +169,51 @@ export function SearchScorePanel({ content, keyword, title, blogType, metaDescri
     ? (['seo', 'aeo', 'schema', 'settings'] as const)
     : (['seo', 'aeo', 'schema'] as const);
 
+  // Calculate score improvements
+  const overallDiff = previousScores ? result.overall - previousScores.overall : 0;
+  const seoDiff = previousScores ? result.seo.score - previousScores.seo : 0;
+  const aeoDiff = previousScores ? result.aeo.score - previousScores.aeo : 0;
+
   return (
     <div className="space-y-6">
+      {/* Improvement Banner */}
+      {showImprovement && previousScores && (overallDiff !== 0 || seoDiff !== 0 || aeoDiff !== 0) && (
+        <div className={`p-4 rounded-xl border ${overallDiff >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${overallDiff >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                {overallDiff >= 0 ? (
+                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <p className={`font-semibold ${overallDiff >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                  {overallDiff >= 0 ? 'Score Improved!' : 'Score Changed'}
+                </p>
+                <p className={`text-sm ${overallDiff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  Overall: {previousScores.overall}% → {result.overall}%
+                  {overallDiff !== 0 && ` (${overallDiff > 0 ? '+' : ''}${overallDiff})`}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-4 text-sm">
+              <div className={seoDiff >= 0 ? 'text-green-700' : 'text-red-700'}>
+                SEO: {seoDiff > 0 ? '+' : ''}{seoDiff}%
+              </div>
+              <div className={aeoDiff >= 0 ? 'text-green-700' : 'text-red-700'}>
+                AEO: {aeoDiff > 0 ? '+' : ''}{aeoDiff}%
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Score Card */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
