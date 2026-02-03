@@ -1,4 +1,5 @@
 import { LinkMatch } from './link-matcher';
+import { isUnsafeLine, countWordsInLine } from './link-injector-helpers';
 
 interface InjectionConfig {
   maxInjections?: number;
@@ -87,32 +88,7 @@ export function injectPlatformLinks(
   };
 }
 
-function isUnsafeLine(line: string): boolean {
-  const trimmed = line.trim();
-
-  // Code blocks
-  if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) return true;
-  // Headings
-  if (/^#{1,6}\s/.test(trimmed)) return true;
-  // Table rows
-  if (trimmed.startsWith('|') && trimmed.endsWith('|')) return true;
-  // Table separator
-  if (/^\|[\s:|-]+\|$/.test(trimmed)) return true;
-  // Images
-  if (trimmed.startsWith('![')) return true;
-  // HTML blocks
-  if (/^<\/?[a-z]/i.test(trimmed)) return true;
-  // Blockquotes
-  if (trimmed.startsWith('>')) return true;
-  // Empty lines
-  if (!trimmed) return true;
-
-  return false;
-}
-
-function countWordsInLine(line: string): number {
-  return line.trim().split(/\s+/).filter(Boolean).length;
-}
+// Note: isUnsafeLine and countWordsInLine are now imported from link-injector-helpers.ts
 
 /**
  * Build regex pattern that matches version-number variants.

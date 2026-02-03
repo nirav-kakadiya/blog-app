@@ -10,7 +10,14 @@ import { calculateUnifiedScore, UnifiedSearchScore } from './unified-search-scor
 import { processImages } from './image-pipeline';
 import { insertTOC } from '@/lib/toc-generator';
 import { insertImagesIntoMarkdown } from '@/lib/image-inserter';
-import { findRelevantLinks, injectPlatformLinks } from '@/lib/platform-links';
+import { 
+  findRelevantLinks, 
+  injectPlatformLinks, 
+  injectKeywordLinks, 
+  buildKeywordRulesFromTools,
+  initializeSmartMatcher,
+  smartFindLinks,
+} from '@/lib/platform-links';
 import { BlogType, BlogOutput, Platform } from '@/types';
 import { logger } from '@/lib/logger';
 
@@ -139,9 +146,33 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
   // Insert TOC after intro
   let finalContent = insertTOC(contentResult.content, 'TL;DR');
 
-  // Post-process: inject any missing platform links
+  // Post-process: inject any missing platform links using SMART MATCHER
   if (brandProfile && brandProfile.tools.length > 0) {
-    const matches = findRelevantLinks(
+    // Initialize the smart matcher with all brand tools (cached & optimized)
+    initializeSmartMatcher(
+      brandProfile.tools.map(t => ({
+        id: t.id,
+        name: t.name,
+        path: t.path,
+        category: t.category,
+        keywords: t.keywords,
+        description: t.description,
+        priority: t.priority,
+      })),
+      brandProfile.domain
+    );
+
+    // Use smart matcher for primary keyword (version-aware, hierarchical)
+    const smartMatches = smartFindLinks(blog.keyword, 10);
+    logger.info('Smart matcher found links', {
+      blogId,
+      keyword: blog.keyword,
+      matchCount: smartMatches.length,
+      topMatch: smartMatches[0]?.fullUrl,
+    });
+
+    // Also get matches using traditional method for broader coverage
+    const traditionalMatches = findRelevantLinks(
       blog.keyword,
       blog.blogType,
       brandProfile.tools.map(t => ({
@@ -155,13 +186,60 @@ export async function generateBlogContent(input: GenerateBlogInput): Promise<Blo
       })),
       brandProfile.domain
     );
-    const injection = injectPlatformLinks(finalContent, matches);
+
+    // Combine and deduplicate matches (smart matches take priority)
+    const seenUrls = new Set<string>();
+    const combinedMatches = [];
+    
+    for (const match of smartMatches) {
+      if (!seenUrls.has(match.fullUrl)) {
+        seenUrls.add(match.fullUrl);
+        combinedMatches.push(match);
+      }
+    }
+    for (const match of traditionalMatches) {
+      if (!seenUrls.has(match.fullUrl)) {
+        seenUrls.add(match.fullUrl);
+        combinedMatches.push(match);
+      }
+    }
+
+    const injection = injectPlatformLinks(finalContent, combinedMatches);
     finalContent = injection.content;
     logger.info('Platform links injected', {
       blogId,
       injected: injection.injectedCount,
       existing: injection.existingCount,
+      totalMatches: combinedMatches.length,
     });
+
+    // Second pass: Keyword/phrase links based on actual brand tools from sitemap
+    // Only uses URLs that exist on your site (from database/sitemap crawl)
+    const toolKeywordRules = buildKeywordRulesFromTools(
+      brandProfile.tools.map(t => ({
+        name: t.name,
+        path: t.path,
+        keywords: t.keywords,
+      })),
+      brandProfile.domain
+    );
+    // Only use tool-based rules to ensure all URLs are valid
+    const allKeywordRules = toolKeywordRules;
+    
+    const keywordInjection = injectKeywordLinks(finalContent, allKeywordRules, {
+      maxInjections: 8,
+      minWordGap: 100,
+      domain: brandProfile.domain,
+    });
+    finalContent = keywordInjection.content;
+    
+    if (keywordInjection.injectedCount > 0) {
+      logger.info('Keyword links injected', {
+        blogId,
+        injected: keywordInjection.injectedCount,
+        phrases: keywordInjection.linkedPhrases,
+      });
+    }
   }
 
   // Step 2c: Auto-generate images based on keyword, title, and content

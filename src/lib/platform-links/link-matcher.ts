@@ -24,6 +24,41 @@ function normalizeVersions(text: string): string {
 }
 
 /**
+ * Extract version number from a string (e.g., "veo 3" -> "3", "gpt-4o" -> "4o")
+ */
+function extractVersion(text: string): string | null {
+  const match = text.match(/(\d+(?:[.\-]\d+)?(?:[a-z])?)/i);
+  return match ? match[1].replace(/[.\-]/g, ' ') : null;
+}
+
+/**
+ * Calculate specificity score - more specific matches score higher.
+ * "veo 3" matching "veo 3" is more specific than "veo 3" matching "veo"
+ */
+function calculateSpecificityBonus(keyword: string, toolKeyword: string): number {
+  const keywordVersion = extractVersion(keyword);
+  const toolVersion = extractVersion(toolKeyword);
+  
+  // If keyword has a version number
+  if (keywordVersion) {
+    // Tool also has the SAME version = high bonus
+    if (toolVersion && keywordVersion === toolVersion) {
+      return 0.3;
+    }
+    // Tool has a DIFFERENT version = penalty (prefer exact version match)
+    if (toolVersion && keywordVersion !== toolVersion) {
+      return -0.2;
+    }
+    // Tool has NO version (parent page like /m/veo) = small penalty
+    if (!toolVersion) {
+      return -0.1;
+    }
+  }
+  
+  return 0;
+}
+
+/**
  * Category-related keywords for broader matching in aggressive mode.
  * Maps general terms to tool categories.
  */
@@ -53,17 +88,25 @@ export function findRelevantLinks(
 
     for (const toolKw of tool.keywords) {
       const normalizedToolKw = normalizeVersions(toolKw.toLowerCase().trim());
+      
+      // Calculate specificity bonus/penalty based on version matching
+      const specificityBonus = calculateSpecificityBonus(normalizedKeyword, normalizedToolKw);
 
       // Tier 1: Exact match (after normalization)
       if (normalizedKeyword === normalizedToolKw) {
-        bestScore = 1.0;
-        bestMatchedKeyword = toolKw;
-        break;
+        const score = 1.0 + specificityBonus;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatchedKeyword = toolKw;
+        }
+        continue;
       }
 
-      // Tier 2: Contains match
+      // Tier 2: Contains match - but prefer more specific matches
       if (normalizedKeyword.includes(normalizedToolKw) || normalizedToolKw.includes(normalizedKeyword)) {
-        const score = 0.7;
+        // Calculate how much of the keyword is covered by the tool keyword
+        const coverage = normalizedToolKw.length / normalizedKeyword.length;
+        const score = 0.5 + (0.3 * coverage) + specificityBonus;
         if (score > bestScore) {
           bestScore = score;
           bestMatchedKeyword = toolKw;
@@ -75,7 +118,7 @@ export function findRelevantLinks(
       const toolTokens = normalizedToolKw.split(/\s+/);
       const overlap = keywordTokens.filter(t => toolTokens.includes(t)).length;
       if (overlap > 0) {
-        const score = 0.3 + (0.3 * overlap / Math.max(keywordTokens.length, toolTokens.length));
+        const score = 0.3 + (0.3 * overlap / Math.max(keywordTokens.length, toolTokens.length)) + specificityBonus;
         if (score > bestScore) {
           bestScore = score;
           bestMatchedKeyword = toolKw;
@@ -83,12 +126,18 @@ export function findRelevantLinks(
       }
     }
 
-    // Also check tool name (with version normalization)
-    if (bestScore === 0) {
+    // Also check tool name (with version normalization and specificity)
+    if (bestScore < 0.5) {
       const normalizedName = normalizeVersions(tool.name.toLowerCase());
+      const nameSpecificityBonus = calculateSpecificityBonus(normalizedKeyword, normalizedName);
+      
       if (normalizedKeyword.includes(normalizedName) || normalizedName.includes(normalizedKeyword)) {
-        bestScore = 0.5;
-        bestMatchedKeyword = tool.name;
+        const coverage = normalizedName.length / normalizedKeyword.length;
+        const score = 0.4 + (0.2 * coverage) + nameSpecificityBonus;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatchedKeyword = tool.name;
+        }
       }
     }
 
@@ -125,12 +174,46 @@ export function findRelevantLinks(
     }
   }
 
-  // Sort by relevance * inverse priority (lower priority number = higher importance)
+  // Sort by relevance score, then by path specificity (deeper paths = more specific)
   matches.sort((a, b) => {
     const scoreA = a.relevanceScore * (10 / a.tool.priority);
     const scoreB = b.relevanceScore * (10 / b.tool.priority);
+    
+    // If scores are close (within 0.2), prefer the more specific (deeper) path
+    if (Math.abs(scoreA - scoreB) < 0.2) {
+      const depthA = a.tool.path.split('/').filter(Boolean).length;
+      const depthB = b.tool.path.split('/').filter(Boolean).length;
+      // More depth = more specific = should rank higher
+      if (depthB !== depthA) {
+        return depthB - depthA;
+      }
+    }
+    
     return scoreB - scoreA;
   });
 
   return matches.slice(0, maxResults);
+}
+
+/**
+ * Find the most specific matching URL for a keyword.
+ * Prefers deeper paths when multiple matches exist.
+ * 
+ * Example: "veo 3" with tools [/m/veo, /m/veo/veo-3]
+ * Returns: /m/veo/veo-3 (more specific)
+ * 
+ * Example: "veo 3" with tools [/m/veo] only
+ * Returns: /m/veo (fallback to parent)
+ */
+export function findBestMatchingUrl(
+  keyword: string,
+  tools: BrandToolData[],
+  domain: string
+): LinkMatch | null {
+  const matches = findRelevantLinks(keyword, '', tools, domain, 5);
+  
+  if (matches.length === 0) return null;
+  
+  // The sorting already prefers specific paths, so just return the first
+  return matches[0];
 }
