@@ -185,6 +185,42 @@ export class SmartLinkMatcher {
       const versionKey = version || '__base__';
       this.versionMap.get(baseName)!.set(versionKey, tool);
     }
+
+    // Also index by path segments for better fallback matching
+    // Path: /m/kling-ai/ → index under "kling" as base
+    // Path: /m/kling-ai/kling-3 → index under "kling" with version "3"
+    const pathSegments = tool.path.split('/').filter(Boolean);
+    for (const segment of pathSegments) {
+      // Extract potential base name from segment (e.g., "kling-ai" → "kling")
+      const segmentParts = segment.split('-').filter(p => p.length >= 2);
+      if (segmentParts.length > 0) {
+        const pathBaseName = segmentParts[0].toLowerCase();
+        
+        // Check if last part is a version number
+        const lastPart = segmentParts[segmentParts.length - 1];
+        const isVersion = /^\d+$/.test(lastPart) || /^v\d+/i.test(lastPart);
+        
+        if (!this.versionMap.has(pathBaseName)) {
+          this.versionMap.set(pathBaseName, new Map());
+        }
+        
+        if (isVersion && segmentParts.length > 1) {
+          // This is a versioned path like "kling-3"
+          const pathVersion = lastPart.replace(/^v/i, '');
+          // Only set if not already present (don't override name-based indexing)
+          if (!this.versionMap.get(pathBaseName)!.has(pathVersion)) {
+            this.versionMap.get(pathBaseName)!.set(pathVersion, tool);
+          }
+        } else {
+          // This could be a base path like "kling-ai"
+          // Set as __base__ if not already set, or if this path is shorter (more generic)
+          const existingBase = this.versionMap.get(pathBaseName)!.get('__base__');
+          if (!existingBase || tool.path.split('/').length < existingBase.path.split('/').length) {
+            this.versionMap.get(pathBaseName)!.set('__base__', tool);
+          }
+        }
+      }
+    }
   }
 
   // --------------------------------------------------------------------------
