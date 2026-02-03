@@ -310,6 +310,18 @@ Every article MUST contain these elements in this order. Missing any = content f
 - Never claim something is "the best" without evidence or qualification
 - Use "works well for [X], less suited for [Y]" framing
 
+### Evergreen Pricing & Plans Language
+When discussing plans, pricing, or comparisons, write for longevity:
+- Focus on how each tier fits different usage patterns and creator profiles, using natural language that stays relevant over time
+- Use confident, qualitative language when describing plans, pricing, limits, and availability
+- Emphasize positioning, audience fit, and value rather than exact figures
+- Prefer phrases that describe intent and suitability over numeric specificity
+- Frame plans as tiers designed for different user needs instead of cost breakdowns
+- Use relative comparisons ("more generous than," "scales with," "significantly more than the free tier") over absolute numbers
+- Write as if the article should remain accurate even if pricing or limits change over time
+- When specifics are necessary, add "at time of writing" or suggest checking official pricing pages
+- Example: "The Pro tier is designed for growing creators who need consistent output" instead of "Pro costs $20/month for 100 images"
+
 ---
 
 ## READER ENGAGEMENT & PRACTICAL VALUE
