@@ -4,7 +4,7 @@
  * "video generation", "text to video" etc. to relevant platform pages.
  */
 
-import { isUnsafeLine, countWordsInLine, isInsideMarkdownLink } from './link-injector-helpers';
+import { isUnsafeLine, countWordsInLine, isUnsafePosition } from './link-injector-helpers';
 import { KeywordRule } from './keyword-links';
 
 interface KeywordInjectionConfig {
@@ -75,8 +75,8 @@ export function injectKeywordLinks(
       const match = line.match(regex);
       if (!match || match.index === undefined) continue;
 
-      // Check if this position is already inside a markdown link
-      if (isInsideMarkdownLink(line, match.index)) continue;
+      // Check if this position is already inside a markdown link or URL
+      if (isUnsafePosition(line, match.index)) continue;
       
       // Check if the match is already part of a link (look for ] or ( nearby)
       const afterMatch = line.slice(match.index + match[0].length);

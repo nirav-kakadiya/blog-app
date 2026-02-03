@@ -1,5 +1,5 @@
 import { LinkMatch } from './link-matcher';
-import { isUnsafeLine, countWordsInLine } from './link-injector-helpers';
+import { isUnsafeLine, countWordsInLine, isUnsafePosition } from './link-injector-helpers';
 
 interface InjectionConfig {
   maxInjections?: number;
@@ -129,11 +129,8 @@ function tryInjectLink(line: string, match: LinkMatch): string | null {
     const found = regex.exec(line);
 
     if (found) {
-      // Make sure we're not inside an existing markdown link
-      const beforeMatch = line.substring(0, found.index);
-      const openBrackets = (beforeMatch.match(/\[/g) || []).length;
-      const closeBrackets = (beforeMatch.match(/\]/g) || []).length;
-      if (openBrackets > closeBrackets) continue; // Inside a link
+      // Comprehensive check: not inside markdown link, URL, or link URL portion
+      if (isUnsafePosition(line, found.index)) continue;
 
       const original = found[0];
       const linked = `[${original}](${match.fullUrl})`;

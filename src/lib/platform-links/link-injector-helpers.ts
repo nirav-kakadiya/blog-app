@@ -38,3 +38,52 @@ export function isInsideMarkdownLink(text: string, position: number): boolean {
   const closeBrackets = (before.match(/\]/g) || []).length;
   return openBrackets !== closeBrackets;
 }
+
+/**
+ * Check if a position is inside a URL (http:// or https://).
+ * This prevents injecting links into URL paths.
+ */
+export function isInsideUrl(text: string, position: number): boolean {
+  // Find all URLs in the text
+  const urlRegex = /https?:\/\/[^\s\)\]"'>]+/gi;
+  let match;
+  while ((match = urlRegex.exec(text)) !== null) {
+    const urlStart = match.index;
+    const urlEnd = urlStart + match[0].length;
+    // Check if position is within this URL
+    if (position >= urlStart && position < urlEnd) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check if a position is inside the URL portion of a markdown link ](url)
+ */
+export function isInsideLinkUrl(text: string, position: number): boolean {
+  // Find all markdown link URL portions: ](url)
+  const linkUrlRegex = /\]\([^)]+\)/g;
+  let match;
+  while ((match = linkUrlRegex.exec(text)) !== null) {
+    const urlStart = match.index;
+    const urlEnd = urlStart + match[0].length;
+    // Check if position is within this link URL portion
+    if (position >= urlStart && position < urlEnd) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Comprehensive check if a position should NOT have a link injected.
+ * Returns true if the position is unsafe for link injection.
+ */
+export function isUnsafePosition(text: string, position: number): boolean {
+  return (
+    isInsideMarkdownLink(text, position) ||
+    isInsideUrl(text, position) ||
+    isInsideLinkUrl(text, position)
+  );
+}
