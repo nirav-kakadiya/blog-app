@@ -139,13 +139,22 @@ Return a JSON object with this exact structure:
   "toolsAndResources": ["real tools, websites, and resources related to ${keyword}"]
 }
 
-RULES:
+CRITICAL RULES:
 - Every statistic MUST have a real source (company name, report name, year)
 - Every quote MUST be attributed to a real person or organization
 - Pricing must be EXACT current prices, not estimates
 - If you're not sure about a fact, OMIT it rather than guess
 - Include at least 5 statistics, 2 expert quotes, and 8 key facts
 - For ${blogType} content, focus especially on: ${getBlogTypeFocus(blogType)}
+
+IMPORTANT - DO NOT INCLUDE:
+- NO competitor website URLs or links (e.g., "visit example.com")
+- NO promotional calls-to-action for third-party tools
+- NO affiliate or tracking links (utm_source, etc.)
+- NO "Sign up at..." or "Try at..." instructions for competitor products
+- ONLY include competitor names and factual capabilities, NOT promotional content
+- Source attributions should be organization/study names only, NOT clickable URLs
+
 - Return ONLY valid JSON, no markdown code blocks`;
 }
 
@@ -358,65 +367,85 @@ export function formatResearchForPrompt(research: ResearchData): string {
     return '';
   }
 
+  // Helper to strip URLs from text
+  const stripUrls = (text: string): string => {
+    return text
+      .replace(/https?:\/\/[^\s)\]]+/gi, '') // Remove URLs
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove markdown links, keep text
+      .replace(/visit\s+[a-z0-9.-]+\.(com|io|ai|org|net)/gi, '') // Remove "visit example.com"
+      .replace(/\butm_[a-z_]+=[^\s&]+/gi, '') // Remove UTM params
+      .replace(/\s{2,}/g, ' ') // Clean up extra spaces
+      .trim();
+  };
+
   const sections: string[] = [
     `\n## VERIFIED RESEARCH DATA — Use These Facts, Do NOT Hallucinate\n`,
     `The following data was gathered from web research on "${research.topic}" as of ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.`,
     `Use ONLY these facts, statistics, and quotes in your article. Do NOT invent additional statistics or attribute quotes to sources not listed here. If you need to supplement, use general knowledge but NEVER fabricate specific numbers.\n`,
+    `IMPORTANT: Do NOT include any competitor website URLs, affiliate links, or "visit/try at" calls-to-action in the article. Focus on YOUR platform's value. Mention competitor names factually only when comparing features.\n`,
   ];
 
   if (research.summary) {
-    sections.push(`### Topic Overview\n${research.summary}\n`);
+    sections.push(`### Topic Overview\n${stripUrls(research.summary)}\n`);
   }
 
   if (research.keyFacts.length > 0) {
-    sections.push(`### Key Facts\n${research.keyFacts.map((f) => `- ${f}`).join('\n')}\n`);
+    sections.push(`### Key Facts\n${research.keyFacts.map((f) => `- ${stripUrls(f)}`).join('\n')}\n`);
   }
 
   if (research.statistics.length > 0) {
     sections.push(
-      `### Statistics (Use These Exact Numbers)\n${research.statistics.map((s) => `- ${s.stat} — Source: ${s.source}`).join('\n')}\n`
+      `### Statistics (Use These Exact Numbers)\n${research.statistics.map((s) => `- ${stripUrls(s.stat)} — Source: ${stripUrls(s.source)}`).join('\n')}\n`
     );
   }
 
   if (research.expertQuotes.length > 0) {
     sections.push(
-      `### Expert Statements (Attribute Correctly)\n${research.expertQuotes.map((q) => `- "${q.quote}" — ${q.source}`).join('\n')}\n`
+      `### Expert Statements (Attribute Correctly)\n${research.expertQuotes.map((q) => `- "${stripUrls(q.quote)}" — ${stripUrls(q.source)}`).join('\n')}\n`
     );
   }
 
+  // NOTE: Pricing data should use evergreen language in content, not exact tables
   if (research.pricing && research.pricing.length > 0) {
     sections.push(
-      `### Pricing Data (Use Exact Numbers)\n${research.pricing.map((p) => `- **${p.name}**: ${p.price} — ${p.details}`).join('\n')}\n`
+      `### Pricing Data (Reference Only — Use Evergreen Language in Article)\n${research.pricing.map((p) => `- **${p.name}**: ${p.price} — ${p.details}`).join('\n')}\nNOTE: When writing about pricing, use qualitative descriptions (e.g., "designed for growing creators") rather than exact dollar amounts. Suggest readers check official pricing pages for current rates.\n`
     );
   }
 
+  // NOTE: Competitors should be mentioned factually, without promotional links
   if (research.competitors && research.competitors.length > 0) {
     sections.push(
-      `### Competitors & Alternatives\n${research.competitors
+      `### Competitors & Alternatives (Factual Comparison Only — NO URLs)\n${research.competitors
         .map(
           (c) =>
-            `- **${c.name}**: ${c.description}${c.strengths?.length ? `\n  Strengths: ${c.strengths.join(', ')}` : ''}${c.weaknesses?.length ? `\n  Weaknesses: ${c.weaknesses.join(', ')}` : ''}`
+            `- **${c.name}**: ${stripUrls(c.description)}${c.strengths?.length ? `\n  Strengths: ${c.strengths.map(s => stripUrls(s)).join(', ')}` : ''}${c.weaknesses?.length ? `\n  Weaknesses: ${c.weaknesses.map(w => stripUrls(w)).join(', ')}` : ''}`
         )
-        .join('\n')}\n`
+        .join('\n')}\nIMPORTANT: Do NOT include any links to competitors. Do NOT recommend users "visit" or "try" competitor products. Focus on factual capability comparisons only.\n`
     );
   }
 
   if (research.recentDevelopments.length > 0) {
     sections.push(
-      `### Recent Developments (2025-2026)\n${research.recentDevelopments.map((d) => `- ${d}`).join('\n')}\n`
+      `### Recent Developments (2025-2026)\n${research.recentDevelopments.map((d) => `- ${stripUrls(d)}`).join('\n')}\n`
     );
   }
 
   if (research.commonQuestions.length > 0) {
     sections.push(
-      `### Real Questions People Ask (Use in FAQ Section)\n${research.commonQuestions.map((q) => `- ${q}`).join('\n')}\n`
+      `### Real Questions People Ask (Use in FAQ Section)\n${research.commonQuestions.map((q) => `- ${stripUrls(q)}`).join('\n')}\n`
     );
   }
 
   if (research.toolsAndResources.length > 0) {
-    sections.push(
-      `### Tools & Resources\n${research.toolsAndResources.map((t) => `- ${t}`).join('\n')}\n`
-    );
+    // Filter out competitor tools, keep only general resources
+    const filteredResources = research.toolsAndResources
+      .map(t => stripUrls(t))
+      .filter(t => t.length > 5); // Remove empty/tiny entries after stripping
+    if (filteredResources.length > 0) {
+      sections.push(
+        `### Tools & Resources (General References Only)\n${filteredResources.map((t) => `- ${t}`).join('\n')}\n`
+      );
+    }
   }
 
   return sections.join('\n');

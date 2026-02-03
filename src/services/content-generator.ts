@@ -355,6 +355,33 @@ For the primary keyword, place it naturally in:
 
 ---
 
+## COMPETITOR HANDLING RULES (CRITICAL)
+
+When writing about tools, software, or services:
+
+**NEVER DO:**
+- Do NOT include links/URLs to competitor products (e.g., "[Try Vidra](https://vidra.ai)")
+- Do NOT write "visit [competitor].com" or "try [competitor] at [URL]"
+- Do NOT include promotional calls-to-action for competitor products
+- Do NOT create clickable links to external competitor tools
+- Do NOT include affiliate links or tracking URLs for any product
+
+**ALLOWED:**
+- Mention competitor names factually for context (e.g., "similar to tools like X and Y")
+- Describe competitor capabilities objectively without promotional language
+- Compare features in tables — but use generic "Alternative A", "Alternative B" if names are unknown
+- Reference industry names that provide context
+
+**EXAMPLE - WRONG:**
+"[Vidra AI](https://vidra.ai) is a great alternative. Try it at vidra.ai/signup"
+
+**EXAMPLE - CORRECT:**
+"Other tools in this space include Vidra AI and similar alternatives, each with different pricing structures."
+
+The goal: readers should stay on OUR platform. All external links should be limited to authoritative sources (Wikipedia, GitHub, research papers) — never promotional links to competitor products.
+
+---
+
 {PLATFORM_CONTEXT}
 
 ## PRE-SUBMISSION QUALITY SELF-CHECK
@@ -904,16 +931,18 @@ function getComparisonPrompt(keyword: string, title: string): string {
 
 ## ${keyword}: Full Comparison Table
 
-| Feature | [Tool A] | [Tool B] | Winner |
+| Feature | Option A | Option B | Winner |
 |---------|----------|----------|--------|
-| **Price** | [Exact $ amount] | [Exact $ amount] | [Tool] |
+| **Pricing Tier** | [Value/Budget/Premium] | [Value/Budget/Premium] | [Tool] |
 | **Quality** | [Rating + detail] | [Rating + detail] | [Tool] |
-| **Speed** | [Specific time] | [Specific time] | [Tool] |
+| **Speed** | [Fast/Medium/Slow] | [Fast/Medium/Slow] | [Tool] |
 | **Ease of Use** | [Rating] | [Rating] | [Tool] |
-| **Free Plan** | [Yes/No + limits] | [Yes/No + limits] | [Tool] |
-| **API Access** | [Yes/No + pricing] | [Yes/No + pricing] | [Tool] |
+| **Free Plan** | [Yes/No + description] | [Yes/No + description] | [Tool] |
+| **API Access** | [Yes/No] | [Yes/No] | [Tool] |
 | **Output Formats** | [List] | [List] | [Tool] |
 | **Support** | [Channels] | [Channels] | [Tool] |
+
+NOTE: Use generic "Option A/B" placeholders. Replace with actual tool names from research. Do NOT include pricing in dollar amounts — use qualitative terms (budget-friendly, premium, enterprise-level). Always recommend readers check official pricing pages.
 
 ## How Does ${keyword} Pricing Compare?
 [DIRECT ANSWER: 40-60 words with specific dollar amounts.]
@@ -1710,17 +1739,21 @@ function getToolsPrompt(keyword: string, title: string): string {
 [5-7 steps to first success]
 
 ## Pricing and Plans
-| Plan | Monthly Price | Annual Price | Key Features | Best For |
-|------|--------------|--------------|--------------|----------|
-| Free | $0 | $0 | [Feature limits] | [User type] |
-| Basic | $[X]/mo | $[X]/yr | [Features] | [User type] |
-| Pro | $[X]/mo | $[X]/yr | [Features] | [User type] |
-| Enterprise | Custom | Custom | [Features] | [User type] |
 
-**Free Plan Details:**
-- [What's included]
-- [Key limitations]
-- [Usage caps]
+${keyword} offers tiered pricing designed for different user needs. The pricing structure balances accessibility with professional-grade features.
+
+**Free Tier:**
+[Describe what's included for free users — focus on capabilities, not exact limits. E.g., "Generous for hobbyists and those exploring the platform."]
+
+**Paid Tiers:**
+- **Starter/Basic**: Designed for individuals who need consistent access beyond free limits. Ideal for side projects and light professional use.
+- **Pro/Professional**: Built for active creators and small teams who rely on the tool regularly. Offers significantly expanded capabilities and priority features.
+- **Enterprise**: Custom solutions for organizations needing scale, dedicated support, and advanced integrations.
+
+> **Pricing Note:** Check the official pricing page for current rates, as pricing may change. The tier structure above reflects the general positioning at time of writing.
+
+**Value Assessment:**
+[Qualitative assessment: Is it competitive? Who gets the best value?]
 
 ## Honest Pros and Cons
 
@@ -1739,21 +1772,23 @@ function getToolsPrompt(keyword: string, title: string): string {
 ## How Does It Compare?
 [DIRECT ANSWER: 40-60 words on competitive positioning.]
 
+When comparing ${keyword} to alternatives, focus on capabilities and fit rather than specific pricing that may change. Each tool serves different user needs.
+
 ### [Alternative 1 Name]
 **What it does:** [One-line description]
-**Strengths:** [2-3 bullet points]
-**Limitations:** [1-2 bullet points]
-**Best for:** [One-line use case]
+**Key Difference:** [How it differs from ${keyword}]
+**Best for:** [User profile who should choose this instead]
 
 ### [Alternative 2 Name]
-[Same format — Description, Strengths, Limitations, Best for]
+[Same format — Description, Key Difference, Best for]
 
-| Feature | ${keyword} | [Alt 1] | [Alt 2] |
-|---------|------------|---------|---------|
-| Price | [Specific] | [Specific] | [Specific] |
-| Quality | [Rating] | [Rating] | [Rating] |
-| Speed | [Metric] | [Metric] | [Metric] |
-| Best For | [Use case] | [Use case] | [Use case] |
+**Comparison Overview:**
+| Aspect | ${keyword} | Alternatives |
+|--------|------------|--------------|
+| Target User | [User type] | [User types] |
+| Best For | [Use case] | [Use cases] |
+| Free Tier | [Generosity level] | [Comparison] |
+| Unique Strength | [Differentiator] | [Their strengths] |
 
 ## Performance Benchmarks
 | Metric | ${keyword} | Industry Average |
@@ -1917,21 +1952,23 @@ function getReviewPrompt(keyword: string, title: string): string {
 | Plan | Price | What You Get | Value Rating |
 |------|-------|--------------|--------------|
 | Free | $0 | [Features and limits] | [Rating] |
-| Pro | $[X]/mo | [Features] | [Rating] |
-| Enterprise | $[X]/mo | [Features] | [Rating] |
+| Pro | [Check pricing page] | [Features] | [Rating] |
+| Enterprise | [Custom pricing] | [Features] | [Rating] |
 
-**Value assessment:** [Honest analysis of price vs. what you get]
+**Value assessment:** [Honest analysis of value vs. what you get. Recommend checking official pricing page for current rates.]
 
 ## How Does It Compare?
-[DIRECT ANSWER: 40-60 words on competitive positioning.]
+[DIRECT ANSWER: 40-60 words on competitive positioning. Focus on category differences, not specific competitor names.]
 
-| Feature | ${keyword} | [Competitor 1] | [Competitor 2] |
-|---------|------------|----------------|----------------|
-| Price | [Amount] | [Amount] | [Amount] |
+| Feature | ${keyword} | Alternative A | Alternative B |
+|---------|------------|---------------|---------------|
+| Approach | [Description] | [Description] | [Description] |
 | Quality | [Rating] | [Rating] | [Rating] |
 | Speed | [Metric] | [Metric] | [Metric] |
 | Free Tier | [Detail] | [Detail] | [Detail] |
 | Best For | [Use case] | [Use case] | [Use case] |
+
+NOTE: Use generic "Alternative A/B" unless specific tools are highly relevant. Do NOT include URLs to alternatives.
 
 ## Who Should Use It?
 
@@ -2012,10 +2049,23 @@ function cleanGeneratedContent(content: string, keyword: string): string {
   cleaned = cleaned.replace(/\[insert[^\]]*\]/gi, '');
   cleaned = cleaned.replace(/\[your[^\]]*\]/gi, '');
   cleaned = cleaned.replace(/\[main competitor\]/gi, 'alternatives');
+  cleaned = cleaned.replace(/\[Competitor \d+\]/gi, 'Alternative');
   cleaned = cleaned.replace(/\[add[^\]]*\]/gi, '');
   cleaned = cleaned.replace(/\{keyword\}/gi, keyword);
   cleaned = cleaned.replace(/\{topic\}/gi, keyword);
   cleaned = cleaned.replace(/\[todo[^\]]*\]/gi, '');
+
+  // 2. Remove competitor promotional links - aggressive filtering
+  // Remove markdown links to external competitor sites (keep the text, remove the link)
+  cleaned = cleaned.replace(/\[([^\]]+)\]\(https?:\/\/(?!(?:www\.)?(?:youtube\.com|twitter\.com|x\.com|github\.com|arxiv\.org|wikipedia\.org))[^\)]+\)/gi, '$1');
+  // Remove "Try X at [url]" or "Visit X at [url]" patterns
+  cleaned = cleaned.replace(/(?:try|visit|check out|sign up at|get|use)\s+[^\s]+\s+at\s+\[[^\]]*\]\([^\)]*\)/gi, '');
+  // Remove bare competitor URLs in text
+  cleaned = cleaned.replace(/(?:visit|try|check out|go to|sign up at)\s+https?:\/\/[^\s\)]+/gi, '');
+  // Remove "([url])" patterns often used for source links
+  cleaned = cleaned.replace(/\(https?:\/\/(?!(?:www\.)?(?:youtube\.com|twitter\.com|x\.com|github\.com|arxiv\.org|wikipedia\.org))[^\)]+\)/gi, '');
+  // Remove standalone URLs on their own lines
+  cleaned = cleaned.replace(/^https?:\/\/[^\s]+$/gm, '');
 
   // 2. Remove common LLM filler phrases
   const fillerPatterns = [
