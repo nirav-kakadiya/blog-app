@@ -1,7 +1,8 @@
 'use client';
 
 import { Editor } from '@tiptap/react';
-import { useCallback, useState } from 'react';
+import { NodeSelection } from '@tiptap/pm/state';
+import { useCallback, useEffect, useState } from 'react';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -36,9 +37,77 @@ function ToolbarDivider() {
   return <div className="w-px h-6 bg-gray-300 mx-1" />;
 }
 
+function CurrentSelection({ editor }: { editor: Editor }) {
+  const [selection, setSelection] = useState('');
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateSelection = () => {
+      const { state } = editor;
+      const { selection: editorSelection } = state;
+      const { $from } = editorSelection;
+
+      // Check for images
+      if (editorSelection instanceof NodeSelection && editorSelection.node?.type.name === 'image') {
+        setSelection('Image selected');
+        return;
+      }
+
+      // Check for headings
+      if (editor.isActive('heading', { level: 1 })) {
+        setSelection('Heading 1');
+      } else if (editor.isActive('heading', { level: 2 })) {
+        setSelection('Heading 2');
+      } else if (editor.isActive('heading', { level: 3 })) {
+        setSelection('Heading 3');
+      } else if (editor.isActive('link')) {
+        const href = editor.getAttributes('link').href;
+        setSelection(`Link: ${href || 'No URL'}`);
+      } else if (editor.isActive('codeBlock')) {
+        setSelection('Code Block');
+      } else if (editor.isActive('blockquote')) {
+        setSelection('Blockquote');
+      } else if (editor.isActive('bulletList')) {
+        setSelection('Bullet List');
+      } else if (editor.isActive('orderedList')) {
+        setSelection('Numbered List');
+      } else if (editor.isActive('bold') || editor.isActive('italic') || editor.isActive('strike')) {
+        const formats: string[] = [];
+        if (editor.isActive('bold')) formats.push('Bold');
+        if (editor.isActive('italic')) formats.push('Italic');
+        if (editor.isActive('strike')) formats.push('Strikethrough');
+        if (editor.isActive('code')) formats.push('Code');
+        setSelection(formats.join(', '));
+      } else {
+        setSelection('Paragraph');
+      }
+    };
+
+    updateSelection();
+
+    editor.on('selectionUpdate', updateSelection);
+    editor.on('update', updateSelection);
+
+    return () => {
+      editor.off('selectionUpdate', updateSelection);
+      editor.off('update', updateSelection);
+    };
+  }, [editor]);
+
+  return (
+    <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded font-medium">
+      {selection}
+    </div>
+  );
+}
+
 export function Toolbar({ editor, onInsertImage }: ToolbarProps) {
   const [linkUrl, setLinkUrl] = useState('');
   const [showLinkInput, setShowLinkInput] = useState(false);
+  const [showImageInput, setShowImageInput] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageAlt, setImageAlt] = useState('');
 
   const setLink = useCallback(() => {
     if (!editor) return;
@@ -64,11 +133,65 @@ export function Toolbar({ editor, onInsertImage }: ToolbarProps) {
     }
   };
 
+  const insertImage = useCallback(() => {
+    if (!editor || !imageUrl) return;
+
+    editor.chain().focus().setImage({ src: imageUrl, alt: imageAlt }).run();
+    setImageUrl('');
+    setImageAlt('');
+    setShowImageInput(false);
+  }, [editor, imageUrl, imageAlt]);
+
+  const handleImageKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      insertImage();
+    } else if (e.key === 'Escape') {
+      setShowImageInput(false);
+      setImageUrl('');
+      setImageAlt('');
+    }
+  };
+
+  const deleteSelectedImage = useCallback(() => {
+    if (!editor) return;
+    const { state } = editor;
+    const { selection } = state;
+
+    if (selection instanceof NodeSelection && selection.node?.type.name === 'image') {
+      editor.chain().focus().deleteSelection().run();
+    }
+  }, [editor]);
+
+  // Check if an image is currently selected
+  const isImageSelected = 
+    editor?.state.selection instanceof NodeSelection && 
+    editor.state.selection.node?.type.name === 'image';
+
   if (!editor) return null;
 
   return (
-    <div className="border-b border-gray-200 p-2 flex flex-wrap items-center gap-1 bg-gray-50">
-      {/* Text Formatting */}
+    <div className="border-b border-gray-200 bg-gray-50">
+      {/* Context Indicator */}
+      <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+        <CurrentSelection editor={editor} />
+        
+        {isImageSelected && (
+          <button
+            onClick={deleteSelectedImage}
+            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors flex items-center gap-1"
+            title="Delete selected image"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete Image
+          </button>
+        )}
+      </div>
+
+      {/* Toolbar Buttons */}
+      <div className="p-2 flex flex-wrap items-center gap-1">\n        {/* Text Formatting */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         isActive={editor.isActive('bold')}
@@ -245,13 +368,65 @@ export function Toolbar({ editor, onInsertImage }: ToolbarProps) {
       </div>
 
       {/* Image */}
-      {onInsertImage && (
-        <ToolbarButton onClick={onInsertImage} title="Insert Image">
+      <div className="relative">
+        <ToolbarButton
+          onClick={() => {
+            if (onInsertImage) {
+              onInsertImage();
+            } else {
+              setShowImageInput(!showImageInput);
+            }
+          }}
+          title="Insert Image"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </ToolbarButton>
-      )}
+
+        {showImageInput && (
+          <div className="absolute top-full left-0 mt-1 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[320px]">
+            <div className="space-y-2">
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                onKeyDown={handleImageKeyDown}
+                placeholder="Image URL..."
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+              <input
+                type="text"
+                value={imageAlt}
+                onChange={(e) => setImageAlt(e.target.value)}
+                onKeyDown={handleImageKeyDown}
+                placeholder="Alt text (optional)..."
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={insertImage}
+                  disabled={!imageUrl}
+                  className="flex-1 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Insert
+                </button>
+                <button
+                  onClick={() => {
+                    setShowImageInput(false);
+                    setImageUrl('');
+                    setImageAlt('');
+                  }}
+                  className="px-3 py-1 text-gray-600 hover:text-gray-800 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       <ToolbarDivider />
 
@@ -287,6 +462,7 @@ export function Toolbar({ editor, onInsertImage }: ToolbarProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
         </svg>
       </ToolbarButton>
+      </div>
     </div>
   );
 }

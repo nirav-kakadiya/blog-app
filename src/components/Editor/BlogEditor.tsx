@@ -1,8 +1,10 @@
 'use client';
 
 import { useEditor, EditorContent } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Toolbar } from './Toolbar';
+import { ImageBubbleMenu } from './ImageBubbleMenu';
 import {
   getTiptapExtensions,
   editorStyles,
@@ -46,6 +48,52 @@ export function BlogEditor({
     editorProps: {
       attributes: {
         class: 'prose prose-lg max-w-none focus:outline-none',
+      },
+      handleDOMEvents: {
+        drop: (view, event) => {
+          // Ensure proper handling of drops to preserve document structure
+          const hasFiles = event.dataTransfer?.files?.length;
+          
+          // If dropping files, let the default handler process it
+          if (hasFiles) {
+            return false;
+          }
+          
+          // For internal node dragging, let ProseMirror handle it
+          // This prevents markdown text from appearing
+          return false;
+        },
+      },
+      handleKeyDown: (view, event) => {
+        // Handle Delete/Backspace on selected images
+        if ((event.key === 'Delete' || event.key === 'Backspace')) {
+          const { state } = view;
+          const { selection } = state;
+          
+          // Check if it's a NodeSelection with an image node
+          if (selection instanceof NodeSelection && selection.node.type.name === 'image') {
+            event.preventDefault();
+            view.dispatch(state.tr.deleteSelection());
+            return true;
+          }
+        }
+        return false;
+      },
+      handleClick: (view, pos, event) => {
+        const { state } = view;
+        const $pos = state.doc.resolve(pos);
+        const node = $pos.nodeAfter || $pos.nodeBefore;
+
+        // Make images clickable to select them
+        if (node && node.type.name === 'image') {
+          const nodePos = $pos.nodeAfter ? pos : pos - node.nodeSize;
+          const tr = state.tr.setSelection(
+            NodeSelection.create(state.doc, nodePos)
+          );
+          view.dispatch(tr);
+          return true;
+        }
+        return false;
       },
     },
     onUpdate: ({ editor }) => {
@@ -146,7 +194,8 @@ export function BlogEditor({
   const handleInsertImage = useCallback(() => {
     const url = prompt('Enter image URL:');
     if (url && editor) {
-      editor.chain().focus().setImage({ src: url }).run();
+      const alt = prompt('Enter alt text (optional):') || '';
+      editor.chain().focus().setImage({ src: url, alt }).run();
     }
   }, [editor]);
 
@@ -186,11 +235,15 @@ export function BlogEditor({
       <style>{editorStyles}</style>
 
       {!readOnly && <Toolbar editor={editor} onInsertImage={handleInsertImage} />}
-
-      <EditorContent
-        editor={editor}
-        className="min-h-[400px] max-h-[600px] overflow-y-auto"
-      />
+      
+      <div className="relative">
+        {editor && <ImageBubbleMenu editor={editor} />}
+        
+        <EditorContent
+          editor={editor}
+          className="min-h-[400px] max-h-[600px] overflow-y-auto"
+        />
+      </div>
 
       <div className="border-t border-gray-200 px-4 py-2 bg-gray-50 flex items-center justify-between text-sm text-gray-500">
         <div className="flex items-center gap-4">

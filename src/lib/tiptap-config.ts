@@ -4,7 +4,11 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import CodeBlock from '@tiptap/extension-code-block';
 import Placeholder from '@tiptap/extension-placeholder';
+import BubbleMenu from '@tiptap/extension-bubble-menu';
+import Dropcursor from '@tiptap/extension-dropcursor';
 import { marked, Renderer } from 'marked';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
 /**
  * Custom Heading extension that adds id attributes based on text content,
@@ -51,11 +55,49 @@ export const getTiptapExtensions = (placeholder?: string) => [
       class: 'text-blue-600 hover:underline cursor-pointer',
     },
   }),
-  Image.configure({
+  Image.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        alt: {
+          default: '',
+        },
+      };
+    },
+    draggable: true,
+    addProseMirrorPlugins() {
+      return [
+        new Plugin({
+          key: new PluginKey('imageSelect'),
+          props: {
+            decorations: (state) => {
+              const { doc, selection } = state;
+              const decorations: Decoration[] = [];
+
+              doc.descendants((node, pos) => {
+                if (node.type.name === 'image') {
+                  const isSelected = selection.from <= pos && selection.to >= pos + node.nodeSize;
+                  if (isSelected) {
+                    decorations.push(
+                      Decoration.node(pos, pos + node.nodeSize, {
+                        class: 'selected-image',
+                      })
+                    );
+                  }
+                }
+              });
+
+              return DecorationSet.create(state.doc, decorations);
+            },
+          },
+        }),
+      ];
+    },
+  }).configure({
     inline: false,
     allowBase64: true,
     HTMLAttributes: {
-      class: 'max-w-full h-auto rounded-lg my-4',
+      class: 'max-w-full h-auto rounded-lg my-4 cursor-pointer',
     },
   }),
   CodeBlock.configure({
@@ -65,6 +107,13 @@ export const getTiptapExtensions = (placeholder?: string) => [
   }),
   Placeholder.configure({
     placeholder: placeholder || 'Start writing your blog post...',
+  }),
+  Dropcursor.configure({
+    color: '#3b82f6',
+    width: 2,
+  }),
+  BubbleMenu.configure({
+    element: document.createElement('div'),
   }),
 ];
 
@@ -163,6 +212,22 @@ export const editorStyles = `
     height: auto;
     border-radius: 0.5rem;
     margin: 1rem 0;
+    transition: all 0.2s;
+  }
+
+  .ProseMirror img:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .ProseMirror .selected-image img {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .ProseMirror .ProseMirror-selectednode {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
   }
 
   .ProseMirror strong {
