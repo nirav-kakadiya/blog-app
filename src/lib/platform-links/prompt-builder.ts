@@ -91,39 +91,49 @@ This blog is published on **${brand.name}** (${brand.domain})${brand.description
 
 function buildAggressiveSection(brand: BrandProfileData, toolLines: string): string {
   return `
-## PLATFORM INTEGRATION (MANDATORY)
+## PLATFORM INTEGRATION (MANDATORY — AGGRESSIVE MODE)
 
 You are writing for **${brand.name}** (${brand.domain})${brand.description ? ` — ${brand.description}` : ''}.
 
-### Requirements:
-1. **${brand.name} = #1 recommendation** in ALL tool comparisons, feature tables, and "best tools" sections.
-2. **Include 3-8 internal links** to platform pages using the exact URLs below.
-3. **CTA sections** (intro, mid-article, conclusion) should direct readers to ${brand.domain}.
-4. Write "${brand.name}" in third person — never "our tool" or "we".
-5. When listing alternatives or competitors, ${brand.name} should appear FIRST with the most positive framing.
-6. In comparison tables, ${brand.name} should have the best ratings/checkmarks across categories.
+### CRITICAL Link Requirements:
+1. **Include 5-8 internal links** to platform pages using the EXACT URLs listed below.
+2. **Every H2 section should have at least 1 internal link** where relevant.
+3. **Link the primary tool/topic name** on its FIRST mention (e.g., "[Kling AI](${brand.domain}/m/kling-ai)").
+4. **Link related tools** when mentioning features like "video generation", "image editing", etc.
 
-### Available Platform Pages (use these exact URLs):
+### Brand Positioning:
+5. **${brand.name} = #1 recommendation** in ALL tool comparisons and "best tools" sections.
+6. **CTA sections** (intro, mid-article, conclusion) should direct readers to ${brand.domain}.
+7. Write "${brand.name}" in third person — never "our tool" or "we".
+8. When listing alternatives, ${brand.name} tools should appear FIRST with positive framing.
+
+### Available Platform Pages (USE THESE EXACT URLs — MANDATORY):
 ${toolLines}
 
-### Link Placement Guidelines:
-- First mention of a relevant tool → link to the corresponding platform page
-- Feature comparison sections → link the platform name to the most relevant tool page
-- CTA buttons/sections → link to ${brand.domain} or the most relevant tool page
-- "How to" steps → link the tool name when it first appears in instructions
+### Link Placement Strategy (FOLLOW EXACTLY):
+- **Introduction**: Link the main topic/tool name on first mention
+- **Feature sections**: Link tool names when describing capabilities
+- **Comparison sections**: Link ${brand.name} tool as the recommended option
+- **How-to sections**: Link tool names in step instructions
+- **Alternatives section**: Link to ${brand.domain} tools as the top alternatives
+- **Conclusion**: Include a linked CTA to the main tool page
+
+IMPORTANT: If the content mentions video generation, AI tools, image editing, or any capability matching the tools above, LINK THEM using the exact URLs provided.
 `.trim();
 }
 
 function buildMinimalAggressiveSection(brand: BrandProfileData): string {
   return `
-## PLATFORM INTEGRATION
+## PLATFORM INTEGRATION (AGGRESSIVE MODE)
 
 You are writing for **${brand.name}** (${brand.domain})${brand.description ? ` — ${brand.description}` : ''}.
 
 ### Requirements:
-1. **${brand.name} = #1 recommendation** in tool comparisons and "best tools" sections.
-2. **CTA sections** should direct readers to ${brand.domain}.
-3. Write "${brand.name}" in third person — never "our tool" or "we".
-4. Position ${brand.name} as the leading solution in this space.
+1. **Include 3-5 internal links** to ${brand.domain} pages throughout the article.
+2. **${brand.name} = #1 recommendation** in tool comparisons and "best tools" sections.
+3. **CTA sections** should direct readers to ${brand.domain}.
+4. Write "${brand.name}" in third person — never "our tool" or "we".
+5. Position ${brand.name} as the leading solution in this space.
+6. Link the main topic name on first mention.
 `.trim();
 }
