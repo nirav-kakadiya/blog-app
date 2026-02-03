@@ -25,11 +25,14 @@ export function DiffMinimap({
   onNavigateToLine,
 }: DiffMinimapProps) {
   const minimapHeight = Math.min(containerHeight, 300);
-  const lineHeight = minimapHeight / Math.max(totalLines, 1);
+  const safeTotal = Math.max(totalLines, 1);
+  const lineHeight = minimapHeight / safeTotal;
 
-  // Calculate viewport indicator position and size
-  const viewportIndicatorTop = (scrollPosition / totalLines) * minimapHeight;
-  const viewportIndicatorHeight = Math.max((viewportHeight / totalLines) * minimapHeight, 20);
+  // Calculate viewport indicator position and size (with NaN protection)
+  const viewportIndicatorTop = Number.isFinite(scrollPosition) && safeTotal > 0
+    ? (scrollPosition / safeTotal) * minimapHeight
+    : 0;
+  const viewportIndicatorHeight = Math.max((viewportHeight / safeTotal) * minimapHeight, 20);
 
   // Build change markers
   const markers = useMemo(() => {
@@ -107,8 +110,8 @@ export function DiffMinimap({
       <div
         className="absolute left-0 right-0 bg-gray-400/20 border border-gray-400/40 rounded pointer-events-none"
         style={{
-          top: Math.min(viewportIndicatorTop, minimapHeight - viewportIndicatorHeight),
-          height: viewportIndicatorHeight,
+          top: Math.max(0, Math.min(viewportIndicatorTop, minimapHeight - viewportIndicatorHeight)) || 0,
+          height: viewportIndicatorHeight || 20,
         }}
       />
 

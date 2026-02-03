@@ -284,6 +284,26 @@
   line-height: 1.6;
 }
 
+/* Split Edit View */
+.split-edit-view {
+  height: 100%;
+  min-height: 500px;
+}
+
+.split-edit-view textarea {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  tab-size: 2;
+}
+
+.split-edit-view .leading-5 {
+  line-height: 1.25rem;
+}
+
+/* Highlight matching lines on hover (future enhancement) */
+.split-edit-view [data-line]:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
 /* Animation for accepting/rejecting */
 @keyframes pulse-green {
   0%, 100% { background-color: transparent; }

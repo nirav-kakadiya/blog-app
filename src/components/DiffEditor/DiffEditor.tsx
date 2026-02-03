@@ -20,6 +20,7 @@ import { DiffToolbar } from './DiffToolbar';
 import { DiffStatsBar } from './DiffStatsBar';
 import { DiffLineRow } from './DiffLineRow';
 import { DiffMinimap } from './DiffMinimap';
+import { SplitEditView } from './SplitEditView';
 import { ChevronRight } from 'lucide-react';
 
 export function DiffEditor({
@@ -293,13 +294,12 @@ export function DiffEditor({
           style={{ maxHeight: '500px' }}
         >
           {viewMode === 'edit' ? (
-            /* Edit mode: Full textarea */
-            <textarea
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              className="w-full h-full min-h-[500px] p-4 font-mono text-xs resize-none focus:outline-none"
-              placeholder="Edit the optimized content..."
-              disabled={readOnly}
+            /* Edit mode: Side-by-side with original reference */
+            <SplitEditView
+              original={original}
+              editedContent={editedContent}
+              onContentChange={setEditedContent}
+              readOnly={readOnly}
             />
           ) : viewMode === 'split' ? (
             /* Split view */

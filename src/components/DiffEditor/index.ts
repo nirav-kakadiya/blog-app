@@ -1,4 +1,5 @@
 export { DiffEditor } from './DiffEditor';
+export { SplitEditView } from './SplitEditView';
 export type {
   DiffEditorProps,
   DiffLine,
